@@ -7,7 +7,7 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def load_data(file_path="C:/Users/ADMIN/Project-NLP/data/faq.json"):
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Không tìm thấy file dữ liệu: {file_path}")
+        raise FileNotFoundError(f"Không thấy file dữ liệu: {file_path}")
 
     with open(file_path, "r", encoding="utf-8") as f:
         content = json.load(f)

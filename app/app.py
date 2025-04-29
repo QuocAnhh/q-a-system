@@ -18,6 +18,6 @@ if query:
     if score > 0.7:
         st.success(f"Câu hỏi gần nhất: {matched_question}\n Trả lời: {answer}")
     else:
-        st.warning("Không tìm thấy câu hỏi tương tự. Đang tạo câu trả lời bằng AI...")
+        st.warning("Không tìm thấy câu hỏi tương tự. Đang tạo câu trả lời...")
         generated = generate_answer(query)
-        st.info(f"Câu trả lời AI: {generated}")
+        st.info(f"Câu trả lời: {generated}")
