@@ -1,0 +1,452 @@
+[
+    {
+      "question": "Ai là tổng thống đầu tiên của Việt Nam?",
+      "answer": "Hồ Chí Minh là tổng thống đầu tiên của Việt Nam, ông giữ chức vụ từ năm 1945 đến khi qua đời vào năm 1969."
+    },
+    {
+      "question": "Đảng Cộng sản Việt Nam được thành lập vào năm nào?",
+      "answer": "Đảng Cộng sản Việt Nam được thành lập vào ngày 3 tháng 2 năm 1930."
+    },
+    {
+      "question": "Chiến thắng Điện Biên Phủ diễn ra vào năm nào?",
+      "answer": "Chiến thắng Điện Biên Phủ diễn ra vào năm 1954, cụ thể là từ ngày 13 tháng 3 đến ngày 7 tháng 5."
+    },
+    {
+      "question": "Vua Lý Thái Tổ lên ngôi vào năm nào?",
+      "answer": "Vua Lý Thái Tổ lên ngôi vào năm 1010, sau khi dời đô từ Hoa Lư về Đại La và đổi tên thành Thăng Long."
+    },
+    {
+      "question": "Hiệp định Genève được ký kết vào năm nào?",
+      "answer": "Hiệp định Genève được ký kết vào năm 1954, chia Việt Nam thành hai miền tại vĩ tuyến 17."
+    },
+    {
+      "question": "Làm thế nào để cải thiện kỹ năng học tập hiệu quả?",
+      "answer": "Để cải thiện kỹ năng học tập, bạn nên lập kế hoạch học tập rõ ràng, tập trung trong môi trường yên tĩnh, sử dụng phương pháp ghi chú và ôn tập đều đặn."
+    },
+    {
+      "question": "Phương pháp Pomodoro là gì?",
+      "answer": "Phương pháp Pomodoro là kỹ thuật quản lý thời gian, trong đó bạn học hoặc làm việc trong 25 phút, sau đó nghỉ 5 phút, lặp lại 4 lần rồi nghỉ dài hơn."
+    },
+    {
+      "question": "Làm thế nào để giảm căng thẳng khi học thi?",
+      "answer": "Để giảm căng thẳng khi học thi, bạn nên ngủ đủ giấc, tập thở sâu, chia nhỏ bài học và tránh ôn tập quá nhiều vào phút chót."
+    },
+    {
+      "question": "Tại sao cần uống đủ nước mỗi ngày?",
+      "answer": "Uống đủ nước giúp cơ thể duy trì nhiệt độ, hỗ trợ tiêu hóa, vận chuyển chất dinh dưỡng và thải độc tố, cần khoảng 2-3 lít mỗi ngày."
+    },
+    {
+      "question": "Tập thể dục có lợi ích gì cho sức khỏe?",
+      "answer": "Tập thể dục giúp tăng cường sức khỏe tim mạch, cải thiện tâm trạng, giảm nguy cơ bệnh mãn tính và tăng tuổi thọ."
+    },
+    {
+      "question": "Nguyên nhân chính của bệnh tiểu đường là gì?",
+      "answer": "Nguyên nhân chính của bệnh tiểu đường bao gồm yếu tố di truyền, béo phì, ít vận động và chế độ ăn uống không lành mạnh."
+    },
+    {
+      "question": "Làm thế nào để phòng tránh bệnh tim mạch?",
+      "answer": "Để phòng tránh bệnh tim mạch, bạn nên ăn uống lành mạnh, tập thể dục đều đặn, không hút thuốc và kiểm tra sức khỏe định kỳ."
+    },
+    {
+      "question": "Ai là người sáng lập triều đại nhà Nguyễn?",
+      "answer": "Gia Long, tức Nguyễn Ánh, là người sáng lập triều đại nhà Nguyễn vào năm 1802."
+    },
+    {
+      "question": "Cuộc kháng chiến chống Pháp kết thúc khi nào?",
+      "answer": "Cuộc kháng chiến chống Pháp kết thúc vào năm 1954 sau chiến thắng Điện Biên Phủ và Hiệp định Genève."
+    },
+    {
+      "question": "Chủ tịch nước hiện tại của Việt Nam là ai?",
+      "answer": "Tính đến tháng 4 năm 2025, Chủ tịch nước Việt Nam là ông Lương Cường, nhậm chức từ tháng 10 năm 2024."
+    },
+    {
+      "question": "Tại sao cần ngủ đủ giấc mỗi ngày?",
+      "answer": "Ngủ đủ giấc giúp cơ thể phục hồi, tăng cường trí nhớ, cải thiện hệ miễn dịch và giảm nguy cơ mắc bệnh mãn tính."
+    },
+    {
+      "question": "Làm thế nào để cải thiện trí nhớ khi học?",
+      "answer": "Để cải thiện trí nhớ, bạn nên sử dụng phương pháp lặp lại ngắt quãng, liên kết thông tin mới với kiến thức cũ và duy trì lối sống lành mạnh."
+    },
+    {
+      "question": "Chiến dịch Hồ Chí Minh diễn ra vào năm nào?",
+      "answer": "Chiến dịch Hồ Chí Minh diễn ra vào năm 1975, từ ngày 26 tháng 4 đến ngày 30 tháng 4, dẫn đến sự thống nhất đất nước."
+    },
+    {
+      "question": "Triều đại nhà Trần kéo dài bao lâu?",
+      "answer": "Triều đại nhà Trần kéo dài từ năm 1225 đến năm 1400, tổng cộng 175 năm."
+    },
+    {
+      "question": "Làm thế nào để duy trì sức khỏe tinh thần?",
+      "answer": "Để duy trì sức khỏe tinh thần, bạn nên giao tiếp xã hội, thực hành thiền, tập thể dục và tìm kiếm sự hỗ trợ khi cần thiết."
+    },
+
+    {
+        "question": "Ai là thủ tướng đầu tiên của Việt Nam sau khi thống nhất đất nước?",
+        "answer": "Ông Phạm Văn Đồng là thủ tướng đầu tiên của Việt Nam sau khi thống nhất, nhậm chức từ năm 1976 đến 1987."
+    },
+    {
+        "question": "Cuộc cải cách ruộng đất ở Việt Nam diễn ra vào giai đoạn nào?",
+        "answer": "Cuộc cải cách ruộng đất ở Việt Nam diễn ra từ năm 1953 đến 1956, nhằm phân phối lại đất đai cho nông dân."
+    },
+    {
+        "question": "Nhà Nguyễn sụp đổ vào năm nào?",
+        "answer": "Nhà Nguyễn sụp đổ vào năm 1945, khi vua Bảo Đại thoái vị sau Cách mạng Tháng Tám."
+    },
+    {
+        "question": "Ai là người lãnh đạo Cách mạng Tháng Tám năm 1945?",
+        "answer": "Hồ Chí Minh là người lãnh đạo chính của Cách mạng Tháng Tám, cùng với Đảng Cộng sản Việt Nam."
+    },
+    {
+        "question": "Hiệp định Paris về Việt Nam được ký vào năm nào?",
+        "answer": "Hiệp định Paris được ký vào ngày 27 tháng 1 năm 1973, chấm dứt sự can thiệp trực tiếp của Mỹ tại Việt Nam."
+    },
+    {
+        "question": "Làm thế nào để tăng cường khả năng tập trung khi học?",
+        "answer": "Để tăng khả năng tập trung, bạn nên loại bỏ yếu tố gây xao nhãng, sử dụng phương pháp Pomodoro và nghỉ ngơi hợp lý."
+    },
+    {
+        "question": "Tại sao cần học lịch sử trong trường học?",
+        "answer": "Học lịch sử giúp hiểu rõ nguồn gốc văn hóa, rút kinh nghiệm từ quá khứ và phát triển tư duy phản biện."
+    },
+    {
+        "question": "Phương pháp học Feynman là gì?",
+        "answer": "Phương pháp học Feynman là cách học bằng cách giải thích khái niệm phức tạp một cách đơn giản, như dạy lại cho người khác."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh cảm cúm?",
+        "answer": "Để phòng tránh cảm cúm, bạn nên rửa tay thường xuyên, tiêm vắc-xin cúm, và tránh tiếp xúc với người bệnh."
+    },
+    {
+        "question": "Tại sao cần kiểm tra sức khỏe định kỳ?",
+        "answer": "Kiểm tra sức khỏe định kỳ giúp phát hiện sớm các vấn đề sức khỏe, phòng ngừa bệnh và duy trì lối sống lành mạnh."
+    },
+    {
+        "question": "Chiến thắng Bạch Đằng năm 1288 do ai lãnh đạo?",
+        "answer": "Chiến thắng Bạch Đằng năm 1288 do Trần Hưng Đạo lãnh đạo, đánh bại quân Nguyên-Mông."
+    },
+    {
+        "question": "Ai là tổng bí thư Đảng Cộng sản Việt Nam hiện nay?",
+        "answer": "Tính đến tháng 4 năm 2025, Tổng Bí thư là ông Tô Lâm, nhậm chức từ tháng 10 năm 2024."
+    },
+    {
+        "question": "Vua Quang Trung lên ngôi vào năm nào?",
+        "answer": "Vua Quang Trung, tức Nguyễn Huệ, lên ngôi vào năm 1788 sau khi đánh bại quân Thanh."
+    },
+    {
+        "question": "Làm thế nào để cải thiện sức khỏe đường ruột?",
+        "answer": "Để cải thiện sức khỏe đường ruột, bạn nên ăn nhiều chất xơ, bổ sung men vi sinh và uống đủ nước."
+    },
+    {
+        "question": "Tại sao cần hạn chế đường trong chế độ ăn?",
+        "answer": "Hạn chế đường giúp giảm nguy cơ béo phì, tiểu đường loại 2, và sâu răng, đồng thời cải thiện sức khỏe tổng thể."
+    },
+    {
+        "question": "Cuộc kháng chiến chống Mỹ kết thúc khi nào?",
+        "answer": "Cuộc kháng chiến chống Mỹ kết thúc vào ngày 30 tháng 4 năm 1975, với sự kiện Sài Gòn được giải phóng."
+    },
+    {
+        "question": "Triều đại nhà Lê sơ kéo dài bao lâu?",
+        "answer": "Triều đại nhà Lê sơ kéo dài từ năm 1428 đến 1527, tổng cộng 99 năm."
+    },
+    {
+        "question": "Làm thế nào để quản lý thời gian hiệu quả khi học?",
+        "answer": "Để quản lý thời gian, bạn nên lập thời gian biểu, ưu tiên nhiệm vụ quan trọng và tránh trì hoãn."
+    },
+    {
+        "question": "Tại sao cần bổ sung vitamin D cho cơ thể?",
+        "answer": "Vitamin D giúp tăng cường hấp thụ canxi, hỗ trợ xương chắc khỏe và cải thiện hệ miễn dịch."
+    },
+    {
+        "question": "Ai là người lãnh đạo phong trào Tây Sơn?",
+        "answer": "Phong trào Tây Sơn do ba anh em Nguyễn Nhạc, Nguyễn Huệ và Nguyễn Lữ lãnh đạo, khởi đầu từ năm 1771."
+    },
+    {
+        "question": "Việt Nam gia nhập ASEAN vào năm nào?",
+        "answer": "Việt Nam gia nhập ASEAN vào ngày 28 tháng 7 năm 1995."
+    },
+    {
+        "question": "Triều đại nhà Lý bắt đầu từ năm nào?",
+        "answer": "Triều đại nhà Lý bắt đầu từ năm 1010, khi Lý Thái Tổ lên ngôi và dời đô về Thăng Long."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh cao huyết áp?",
+        "answer": "Để phòng tránh cao huyết áp, bạn nên giảm muối, tập thể dục, duy trì cân nặng hợp lý và tránh căng thẳng."
+    },
+    {
+        "question": "Tại sao cần ngủ đúng giờ mỗi ngày?",
+        "answer": "Ngủ đúng giờ giúp điều chỉnh đồng hồ sinh học, cải thiện chất lượng giấc ngủ và tăng cường sức khỏe tinh thần."
+    },
+    {
+        "question": "Chiến thắng Ngọc Hồi-Đống Đa diễn ra vào năm nào?",
+        "answer": "Chiến thắng Ngọc Hồi-Đống Đa diễn ra vào năm 1789, do vua Quang Trung lãnh đạo chống quân Thanh."
+    },
+    {
+        "question": "Ai là thủ tướng Việt Nam từ năm 2016 đến 2021?",
+        "answer": "Ông Nguyễn Xuân Phúc là thủ tướng Việt Nam từ năm 2016 đến 2021."
+    },
+    {
+        "question": "Làm thế nào để học ngoại ngữ hiệu quả?",
+        "answer": "Để học ngoại ngữ hiệu quả, bạn nên luyện nghe, nói, đọc, viết đều đặn, sử dụng ứng dụng học tập và giao tiếp với người bản ngữ."
+    },
+    {
+        "question": "Tại sao cần hạn chế đồ uống có cồn?",
+        "answer": "Hạn chế đồ uống có cồn giúp giảm nguy cơ bệnh gan, tim mạch, và các vấn đề sức khỏe tâm lý."
+    },
+    {
+        "question": "Vua Trần Nhân Tông lên ngôi vào năm nào?",
+        "answer": "Vua Trần Nhân Tông lên ngôi vào năm 1278 và lãnh đạo đất nước qua thời kỳ chống quân Nguyên-Mông."
+    },
+    {
+        "question": "Việt Nam tổ chức bầu cử quốc hội lần đầu vào năm nào?",
+        "answer": "Việt Nam tổ chức bầu cử quốc hội lần đầu vào ngày 6 tháng 1 năm 1946."
+    },
+    {
+        "question": "Làm thế nào để giảm nguy cơ loãng xương?",
+        "answer": "Để giảm nguy cơ loãng xương, bạn nên bổ sung canxi, vitamin D, tập thể dục và tránh hút thuốc."
+    },
+    {
+        "question": "Tại sao cần tập thể dục buổi sáng?",
+        "answer": "Tập thể dục buổi sáng giúp khởi động cơ thể, tăng cường năng lượng và cải thiện tâm trạng suốt cả ngày."
+    },
+    {
+        "question": "Ai là người sáng lập triều đại nhà Trần?",
+        "answer": "Trần Thái Tông, tức Trần Cảnh, là người sáng lập triều đại nhà Trần vào năm 1225."
+    },
+    {
+        "question": "Việt Nam gia nhập Liên Hợp Quốc vào năm nào?",
+        "answer": "Việt Nam gia nhập Liên Hợp Quốc vào ngày 20 tháng 9 năm 1977."
+    },
+    {
+        "question": "Làm thế nào để cải thiện kỹ năng viết luận?",
+        "answer": "Để cải thiện kỹ năng viết luận, bạn nên đọc nhiều, luyện tập viết thường xuyên, và học cách lập dàn ý rõ ràng."
+    },
+    {
+        "question": "Tại sao cần bổ sung chất xơ trong chế độ ăn?",
+        "answer": "Chất xơ giúp cải thiện tiêu hóa, giảm cholesterol, kiểm soát đường huyết và hỗ trợ giảm cân."
+    },
+    {
+        "question": "Chiến thắng Hàm Tử Quan diễn ra vào năm nào?",
+        "answer": "Chiến thắng Hàm Tử Quan diễn ra vào năm 1285, trong cuộc kháng chiến chống quân Nguyên-Mông lần thứ hai."
+    },
+    {
+        "question": "Ai là chủ tịch nước Việt Nam từ năm 2016 đến 2018?",
+        "answer": "Ông Trần Đại Quang là chủ tịch nước Việt Nam từ năm 2016 đến khi qua đời vào năm 2018."
+    },
+    {
+        "question": "Làm thế nào để cải thiện sức khỏe gan?",
+        "answer": "Để cải thiện sức khỏe gan, bạn nên ăn uống lành mạnh, hạn chế rượu bia, và tránh thực phẩm nhiều dầu mỡ."
+    },
+    {
+        "question": "Tại sao cần duy trì thói quen đọc sách?",
+        "answer": "Đọc sách giúp mở rộng kiến thức, cải thiện tư duy, tăng khả năng tập trung và giảm căng thẳng."
+    },
+    {
+        "question": "Vua Lê Lợi lên ngôi vào năm nào?",
+        "answer": "Vua Lê Lợi lên ngôi vào năm 1428, sau khi đánh bại quân Minh và sáng lập triều đại nhà Lê sơ."
+    },
+    {
+        "question": "Việt Nam mở cửa hội nhập kinh tế quốc tế vào năm nào?",
+        "answer": "Việt Nam bắt đầu mở cửa hội nhập kinh tế quốc tế từ năm 1986 với chính sách Đổi mới."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh viêm họng?",
+        "answer": "Để phòng tránh viêm họng, bạn nên giữ ấm cổ, tránh uống nước lạnh, và vệ sinh răng miệng thường xuyên."
+    },
+    {
+        "question": "Tại sao cần kiểm soát căng thẳng trong cuộc sống?",
+        "answer": "Kiểm soát căng thẳng giúp giảm nguy cơ bệnh tim, cải thiện giấc ngủ và tăng cường sức khỏe tinh thần."
+    },
+    {
+        "question": "Ai là người lãnh đạo cuộc khởi nghĩa Lam Sơn?",
+        "answer": "Lê Lợi là người lãnh đạo cuộc khởi nghĩa Lam Sơn, diễn ra từ năm 1418 đến 1427 chống quân Minh."
+    },
+    {
+        "question": "Việt Nam ký hiệp định thương mại với Mỹ vào năm nào?",
+        "answer": "Việt Nam ký hiệp định thương mại với Mỹ vào năm 2000, có hiệu lực từ năm 2001."
+    },
+    {
+        "question": "Làm thế nào để cải thiện kỹ năng thuyết trình?",
+        "answer": "Để cải thiện kỹ năng thuyết trình, bạn nên luyện tập trước gương, chuẩn bị nội dung kỹ lưỡng và giao tiếp tự tin."
+    },
+    {
+        "question": "Tại sao cần bổ sung omega-3 cho cơ thể?",
+        "answer": "Omega-3 giúp giảm viêm, hỗ trợ sức khỏe tim mạch, cải thiện trí não và tăng cường hệ miễn dịch."
+    },
+    {
+        "question": "Chiến thắng Vạn Kiếp diễn ra vào năm nào?",
+        "answer": "Chiến thắng Vạn Kiếp diễn ra vào năm 1285, do Trần Hưng Đạo lãnh đạo trong cuộc kháng chiến chống quân Nguyên-Mông."
+    },
+    {
+        "question": "Ai là thủ tướng Việt Nam hiện nay?",
+        "answer": "Tính đến tháng 4 năm 2025, Thủ tướng Việt Nam là ông Phạm Minh Chính, nhậm chức từ tháng 4 năm 2021."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh đau lưng?",
+        "answer": "Để phòng tránh đau lưng, bạn nên giữ tư thế đúng, tập thể dục nhẹ nhàng và tránh mang vác nặng sai cách."
+    },
+    {
+        "question": "Tại sao cần duy trì thói quen uống trà xanh?",
+        "answer": "Uống trà xanh giúp chống oxy hóa, giảm nguy cơ bệnh tim, hỗ trợ giảm cân và cải thiện sức khỏe não bộ."
+    },
+    {
+        "question": "Vua Hàm Nghi lãnh đạo phong trào nào?",
+        "answer": "Vua Hàm Nghi lãnh đạo phong trào Cần Vương, khởi phát từ năm 1885 để chống thực dân Pháp."
+    },
+    {
+        "question": "Việt Nam gia nhập WTO vào năm nào?",
+        "answer": "Việt Nam gia nhập Tổ chức Thương mại Thế giới (WTO) vào ngày 11 tháng 1 năm 2007."
+    },
+    {
+        "question": "Làm thế nào để cải thiện kỹ năng giải quyết vấn đề?",
+        "answer": "Để cải thiện kỹ năng giải quyết vấn đề, bạn nên phân tích tình huống, tìm nhiều giải pháp và học từ kinh nghiệm."
+    },
+    {
+        "question": "Tại sao cần bổ sung sắt cho cơ thể?",
+        "answer": "Sắt giúp tạo hồng cầu, ngăn ngừa thiếu máu, hỗ trợ vận chuyển oxy và tăng cường năng lượng."
+    },
+    {
+        "question": "Chiến thắng Đông Bộ Đầu diễn ra vào năm nào?",
+        "answer": "Chiến thắng Đông Bộ Đầu diễn ra vào năm 938, do Ngô Quyền lãnh đạo, đánh bại quân Nam Hán."
+    },
+    {
+        "question": "Ai là chủ tịch nước Việt Nam từ năm 2018 đến 2021?",
+        "answer": "Bà Nguyễn Thị Kim Ngân là chủ tịch Quốc hội từ năm 2016 đến 2021, nhưng chủ tịch nước giai đoạn 2018-2021 là ông Nguyễn Phú Trọng."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh đau mắt đỏ?",
+        "answer": "Để phòng tránh đau mắt đỏ, bạn nên rửa tay thường xuyên, không dụi mắt và tránh dùng chung đồ với người bệnh."
+    },
+    {
+        "question": "Tại sao cần duy trì thói quen đi bộ mỗi ngày?",
+        "answer": "Đi bộ mỗi ngày giúp cải thiện sức khỏe tim mạch, tăng cường trao đổi chất và giảm căng thẳng."
+    },
+    {
+        "question": "Vua Đinh Bộ Lĩnh lên ngôi vào năm nào?",
+        "answer": "Vua Đinh Bộ Lĩnh lên ngôi vào năm 968, sau khi dẹp loạn 12 sứ quân và lập ra nhà Đinh."
+    },
+    {
+        "question": "Việt Nam thiết lập quan hệ ngoại giao với Mỹ vào năm nào?",
+        "answer": "Việt Nam thiết lập quan hệ ngoại giao với Mỹ vào ngày 12 tháng 7 năm 1995."
+    },
+    {
+        "question": "Làm thế nào để cải thiện kỹ năng tư duy phản biện?",
+        "answer": "Để cải thiện tư duy phản biện, bạn nên đặt câu hỏi, phân tích thông tin từ nhiều góc độ và luyện tập tranh luận."
+    },
+    {
+        "question": "Tại sao cần bổ sung kẽm cho cơ thể?",
+        "answer": "Kẽm giúp tăng cường hệ miễn dịch, hỗ trợ lành vết thương, và cải thiện sức khỏe tóc, da, móng."
+    },
+    {
+        "question": "Chiến thắng Chương Dương diễn ra vào năm nào?",
+        "answer": "Chiến thắng Chương Dương diễn ra vào năm 1285, trong cuộc kháng chiến chống quân Nguyên-Mông lần thứ hai."
+    },
+    {
+        "question": "Ai là tổng bí thư Đảng Cộng sản Việt Nam từ năm 2011 đến 2021?",
+        "answer": "Ông Nguyễn Phú Trọng là tổng bí thư từ năm 2011 và tiếp tục giữ chức vụ đến năm 2024."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh sốt xuất huyết?",
+        "answer": "Để phòng tránh sốt xuất huyết, bạn nên diệt muỗi, dọn dẹp nơi ở sạch sẽ và sử dụng màn chống muỗi."
+    },
+    {
+        "question": "Tại sao cần duy trì thói quen yoga?",
+        "answer": "Yoga giúp tăng cường sự linh hoạt, giảm căng thẳng, cải thiện tư thế và hỗ trợ sức khỏe tinh thần."
+    },
+    {
+        "question": "Vua Lý Nam Đế lên ngôi vào năm nào?",
+        "answer": "Vua Lý Nam Đế lên ngôi vào năm 544, sáng lập nước Vạn Xuân và chống lại nhà Lương."
+    },
+    {
+        "question": "Việt Nam ký hiệp định CPTPP vào năm nào?",
+        "answer": "Việt Nam ký hiệp định CPTPP vào ngày 8 tháng 3 năm 2018, và hiệp định có hiệu lực từ năm 2019."
+    },
+    {
+        "question": "Làm thế nào để cải thiện kỹ năng giao tiếp?",
+        "answer": "Để cải thiện kỹ năng giao tiếp, bạn nên lắng nghe tích cực, luyện tập nói rõ ràng và chú ý ngôn ngữ cơ thể."
+    },
+    {
+        "question": "Tại sao cần bổ sung vitamin C mỗi ngày?",
+        "answer": "Vitamin C giúp tăng cường hệ miễn dịch, chống oxy hóa, hỗ trợ lành vết thương và cải thiện sức khỏe da."
+    },
+    {
+        "question": "Chiến thắng Gò Công diễn ra vào năm nào?",
+        "answer": "Chiến thắng Gò Công diễn ra vào năm 1861, trong cuộc kháng chiến chống thực dân Pháp."
+    },
+    {
+        "question": "Ai là thủ tướng Việt Nam từ năm 2006 đến 2016?",
+        "answer": "Ông Nguyễn Tấn Dũng là thủ tướng Việt Nam từ năm 2006 đến 2016."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh viêm gan B?",
+        "answer": "Để phòng tránh viêm gan B, bạn nên tiêm vắc-xin, sử dụng biện pháp an toàn khi tiếp xúc máu và tránh dùng chung kim tiêm."
+    },
+    {
+        "question": "Tại sao cần duy trì thói quen viết nhật ký?",
+        "answer": "Viết nhật ký giúp giảm căng thẳng, cải thiện tư duy, ghi lại kỷ niệm và phát triển kỹ năng viết."
+    },
+    {
+        "question": "Vua Trần Thái Tông lên ngôi vào năm nào?",
+        "answer": "Vua Trần Thái Tông lên ngôi vào năm 1225, đánh dấu sự khởi đầu của triều đại nhà Trần."
+    },
+    {
+        "question": "Việt Nam ký hiệp định RCEP vào năm nào?",
+        "answer": "Việt Nam ký hiệp định RCEP vào ngày 15 tháng 11 năm 2020, cùng 14 quốc gia khác."
+    },
+    {
+        "question": "Làm thế nào để cải thiện kỹ năng quản lý thời gian?",
+        "answer": "Để quản lý thời gian, bạn nên sử dụng lịch, đặt mục tiêu cụ thể, và tránh làm nhiều việc cùng lúc."
+    },
+    {
+        "question": "Tại sao cần bổ sung magie cho cơ thể?",
+        "answer": "Magie giúp hỗ trợ chức năng thần kinh, giảm căng thẳng, cải thiện giấc ngủ và tăng cường sức khỏe xương."
+    },
+    {
+        "question": "Chiến thắng Tây Kết diễn ra vào năm nào?",
+        "answer": "Chiến thắng Tây Kết diễn ra vào năm 1285, trong cuộc kháng chiến chống quân Nguyên-Mông lần thứ hai."
+    },
+    {
+        "question": "Ai là chủ tịch nước Việt Nam từ năm 2011 đến 2016?",
+        "answer": "Ông Trương Tấn Sang là chủ tịch nước Việt Nam từ năm 2011 đến 2016."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh tiêu chảy?",
+        "answer": "Để phòng tránh tiêu chảy, bạn nên ăn chín uống sôi, rửa tay trước khi ăn và giữ vệ sinh thực phẩm."
+    },
+    {
+        "question": "Tại sao cần duy trì thói quen thiền mỗi ngày?",
+        "answer": "Thiền giúp giảm căng thẳng, cải thiện sự tập trung, tăng cường sức khỏe tinh thần và điều chỉnh cảm xúc."
+    },
+    {
+        "question": "Vua Lê Đại Hành lên ngôi vào năm nào?",
+        "answer": "Vua Lê Đại Hành lên ngôi vào năm 980, sau khi đánh bại quân Tống và tiếp tục triều đại nhà Đinh."
+    },
+    {
+        "question": "Việt Nam ký hiệp định EVFTA vào năm nào?",
+        "answer": "Việt Nam ký hiệp định EVFTA với Liên minh châu Âu vào ngày 30 tháng 6 năm 2019."
+    },
+    {
+        "question": "Làm thế nào để cải thiện kỹ năng đọc hiểu?",
+        "answer": "Để cải thiện đọc hiểu, bạn nên đọc chậm, ghi chú ý chính, đặt câu hỏi và tóm tắt nội dung."
+    },
+    {
+        "question": "Tại sao cần bổ sung protein cho cơ thể?",
+        "answer": "Protein giúp xây dựng cơ bắp, hỗ trợ phục hồi mô, tăng cường hệ miễn dịch và cung cấp năng lượng."
+    },
+    {
+        "question": "Chiến thắng Cầu Giấy diễn ra vào năm nào?",
+        "answer": "Chiến thắng Cầu Giấy diễn ra vào năm 1873 và 1883, trong cuộc kháng chiến chống thực dân Pháp."
+    },
+    {
+        "question": "Ai là tổng bí thư Đảng Cộng sản Việt Nam từ năm 2001 đến 2011?",
+        "answer": "Ông Nông Đức Mạnh là tổng bí thư Đảng Cộng sản Việt Nam từ năm 2001 đến 2011."
+    },
+    {
+        "question": "Làm thế nào để phòng tránh bệnh lao phổi?",
+        "answer": "Để phòng tránh lao phổi, bạn nên tiêm vắc-xin BCG, giữ vệ sinh môi trường sống và tránh tiếp xúc với người bệnh."
+    },
+    {
+        "question": "Tại sao cần duy trì thói quen chạy bộ?",
+        "answer": "Chạy bộ giúp tăng cường sức khỏe tim mạch, giảm cân, cải thiện tâm trạng và tăng cường sức bền."
+    }
+    ]
+  
