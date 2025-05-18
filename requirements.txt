@@ -2,3 +2,5 @@ streamlit
 sentence-transformers
 transformers
 torch
+fastapi
+pydantic

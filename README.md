@@ -1,3 +1,29 @@
+# Project NLP
+
+## Cấu trúc thư mục
+
+- `app/`: Xử lý NLP backend (retriever, generator)
+- `api/`: REST API cho frontend (FastAPI)
+- `frontend/`: Đặt mã nguồn giao diện tại đây
+- `data/`: Dữ liệu
+
+## Chạy backend API
+
+```bash
+cd api
+uvicorn main:app --reload
+```
+
+## Giao tiếp API
+
+- POST `/ask` với JSON: `{ "question": "..." }`
+- Nhận về: matched_question, answer, score, generated
+
+## Frontend
+
+- Đặt mã nguồn giao diện ở folder `frontend/`
+- Gọi API theo hướng dẫn trên
+
 # Q&A System
 
 This is a simple Q&A system project written in Python.
