@@ -18,7 +18,7 @@ pip install -r requirements.txt
 huggingface-cli login  # Đăng nhập để tải model trên huggingface (model gate)
 ```
 
-## Chạy ứng dụng hỏi đáp
+## Chạy
 ```bash
 streamlit run app\app.py
 python -m streamlit run app\app.py
@@ -32,5 +32,3 @@ python -m streamlit run app\app.py
 - Lần đầu chạy sẽ tự động tải model từ HuggingFace.
 - Nếu gặp lỗi quyền truy cập model, hãy "Request access" trên trang model HuggingFace và kiểm tra lại token
 
-## Đóng góp
-Mọi đóng góp đều được hoan nghênh!
