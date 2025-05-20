@@ -7,7 +7,7 @@ DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
 def get_model(model_name=DEFAULT_MODEL_NAME):
     return SentenceTransformer(model_name)
 
-def load_data(file_path="C:/Users/ADMIN/Project-NLP/data/faq.json", model=None):
+def load_data(file_path="data/faq.json", model=None):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"Không thấy file dữ liệu: {file_path}")
     if model is None:

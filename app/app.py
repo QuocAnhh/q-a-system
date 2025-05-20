@@ -9,7 +9,7 @@ st.title("Chatbot hỏi đáp thông minh")
 def init_data(file_path):
     return load_data(file_path=file_path)
 
-data_file = st.sidebar.text_input("Đường dẫn file dữ liệu:", "C:/Users/ADMIN/Project-NLP/data/faq.json")
+data_file = st.sidebar.text_input("Đường dẫn file dữ liệu:", "data/faq.json")
 data = init_data(data_file)
 
 if "chatbot" not in st.session_state:
@@ -21,7 +21,6 @@ if st.button("Gửi") and query:
     turn = st.session_state.chatbot.ask(query, generator=generate_answer)
     st.session_state.last_turn = turn
 
-# Hiển thị lịch sử hội thoại
 st.subheader("Lịch sử hội thoại")
 for turn in st.session_state.chatbot.get_history():
     st.markdown(f"**Bạn:** {turn['user']}")
