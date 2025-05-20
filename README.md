@@ -1,56 +1,36 @@
 # Project NLP
 
 ## Cấu trúc thư mục
-
 - `app/`: Xử lý NLP backend (retriever, generator)
-- `api/`: REST API cho frontend (FastAPI)
-- `frontend/`: Đặt mã nguồn giao diện tại đây
+- `api`: REST API cho frontend (fastapi)
 - `data/`: Dữ liệu
 
-## Chạy backend API
+## Yêu cầu
+- Python 3.13+
+- Các thư viện trong `requirements.txt`
+- Đã đăng nhập HuggingFace CLI và có quyền truy cập model BkAI
 
+## Cài đặt
 ```bash
-cd api
-uvicorn main:app --reload
+git clone https://github.com/QuocAnhh/q-a-system.git
+cd q-a-system
+pip install -r requirements.txt
+huggingface-cli login  # Đăng nhập để tải model trên huggingface (model gate)
 ```
 
-## Giao tiếp API
-
-- POST `/ask` với JSON: `{ "question": "..." }`
-- Nhận về: matched_question, answer, score, generated
-
-## Frontend
-
-- Đặt mã nguồn giao diện ở folder `frontend/`
-- Gọi API theo hướng dẫn trên
-
-# Q&A System
-
-This is a simple Q&A system project written in Python.
-
-## Requirements
-- Python 3.13.2
-- Required dependencies (listed in `requirements.txt`)
-
-## Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/QuocAnhh/q-a-system.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd q-a-system
-   ```
-3. Install the dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Usage
-Run the application:
+## Chạy ứng dụng hỏi đáp
 ```bash
-streamlit run app.py
+streamlit run app\app.py
+python -m streamlit run app\app.py
 ```
 
-## Contributing
-Contributions are welcome! Please open an issue or submit a pull request.
+## Mô hình sử dụng
+- Truy xuất: SentenceTransformer (có thể đổi sang model tiếng Việt)
+- Sinh câu trả lời: `bkai-foundation-models/vietnamese-llama2-7b-40GB` (đa lĩnh vực, tiếng Việt)
+
+## Ghi chú
+- Lần đầu chạy sẽ tự động tải model từ HuggingFace.
+- Nếu gặp lỗi quyền truy cập model, hãy "Request access" trên trang model HuggingFace và kiểm tra lại token
+
+## Đóng góp
+Mọi đóng góp đều được hoan nghênh!

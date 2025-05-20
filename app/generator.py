@@ -1,14 +1,19 @@
 from transformers import pipeline
 
-qa_generator = pipeline("text2text-generation", model="google/flan-t5-small")
+qa_generator = pipeline(
+    "text-generation",
+    model="bkai-foundation-models/vietnamese-llama2-7b-40GB",
+    max_new_tokens=100
+)
 
 def generate_answer(question):
-    prompt = f"Answer the question: {question}"
-    response = qa_generator(prompt, max_length=100, do_sample=False)
-    # Đảm bảo lấy đúng key, fallback nếu không có 'generated_text'
-    if response and 'generated_text' in response[0]:
-        return response[0]['generated_text']
-    elif response and 'text' in response[0]:
-        return response[0]['text']
+    # Prompt
+    prompt = f"<s>### Câu hỏi:\n{question}\n### Trả lời:"
+    response = qa_generator(prompt)
+    if response and "generated_text" in response[0]:
+        answer = response[0]["generated_text"]
+        if "### Trả lời:" in answer:
+            answer = answer.split("### Trả lời:")[-1].strip()
+        return answer.strip()
     else:
-        return "Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này."
+        return "Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này"

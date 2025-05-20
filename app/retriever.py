@@ -2,6 +2,8 @@ import json
 import os
 from sentence_transformers import SentenceTransformer, util
 
+# Có thể thay đổi sang model embedding tiếng Việt xem thử
+# DEFAULT_MODEL_NAME = "VoVanPhuc/sup-SimCSE-VietNamese-phobert-base"
 DEFAULT_MODEL_NAME = "all-MiniLM-L6-v2"
 
 def get_model(model_name=DEFAULT_MODEL_NAME):
@@ -9,7 +11,7 @@ def get_model(model_name=DEFAULT_MODEL_NAME):
 
 def load_data(file_path="data/faq.json", model=None):
     if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Không thấy file dữ liệu: {file_path}")
+        raise FileNotFoundError(f"Không thấy file data: {file_path}")
     if model is None:
         model = get_model()
     with open(file_path, "r", encoding="utf-8") as f:
@@ -49,7 +51,7 @@ class ChatbotSession:
             if generator is not None:
                 answer = generator(query)
             else:
-                answer = "Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này."
+                answer = "Xin lỗi, tôi chưa có câu trả lời cho câu hỏi này"
             matched_question = None
             generated = True
         turn = {
