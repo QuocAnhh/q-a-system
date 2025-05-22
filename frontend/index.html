@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Shopee Review Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h2>Phân tích & Hỏi đáp Shopee</h2>
+        <input type="text" id="query" placeholder="Nhập link sản phẩm Shopee hoặc câu hỏi về Shopee..." style="width:80%">
+        <button onclick="askShopee()">Gửi</button>  
+        <div id="result" style="margin-top:20px;"></div>
+        <div id="chart"></div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
