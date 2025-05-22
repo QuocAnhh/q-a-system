@@ -1,4 +1,16 @@
+import re
+import unicodedata
 from transformers import pipeline
+
+def preprocess_question(question):
+    """Tiền xử lý input"""
+    # chuẩn hóa unicode
+    question = unicodedata.normalize("NFC", question)
+    # drop khoảng trắng đầu/cuối và nhiều khoảng trắng liên tiếp
+    question = re.sub(r"\s+", " ", question).strip()
+    # drop những ký tự đặc biệt không cần thiết (giữ lại chữ, số, dấu câu cơ bản)
+    question = re.sub(r"[^\w\s,.?!À-ỹà-ỹ]", "", question)
+    return question
 
 qa_generator = pipeline(
     "text-generation",
@@ -7,7 +19,7 @@ qa_generator = pipeline(
 )
 
 def generate_answer(question):
-    # Prompt
+    question = preprocess_question(question)
     prompt = f"<s>### Câu hỏi:\n{question}\n### Trả lời:"
     response = qa_generator(prompt)
     if response and "generated_text" in response[0]:

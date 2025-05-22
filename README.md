@@ -30,5 +30,5 @@ python -m streamlit run app\app.py
 
 ## Ghi chú
 - Lần đầu chạy sẽ tự động tải model từ HuggingFace.
-- Nếu gặp lỗi quyền truy cập model, hãy "Request access" trên trang model HuggingFace và kiểm tra lại token
+- Nếu gặp lỗi quyền truy cập model, hãy "Request access" trên trang model HuggingFace và kiểm tra lại token.
 
