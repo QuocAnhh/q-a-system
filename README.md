@@ -49,21 +49,12 @@ OPENAI_API_KEY=sk-xxxx
 
 ## Running the Application
 
-### Khởi động Backend API
 ```bash
 cd api
 python main.py
 ```
-API server sẽ chạy tại `http://localhost:5000`
+API và frontend server sẽ chạy tại `http://localhost:5000`
 
-### Truy cập Frontend
-Mở file `frontend/index.html` trong trình duyệt web hoặc chạy qua local server:
-
-```bash
-cd frontend
-python -m http.server 8080
-```
-Sau đó truy cập `http://localhost:8080`
 
 ## API Endpoints
 
