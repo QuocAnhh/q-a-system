@@ -1,34 +1,108 @@
-# Project NLP
+# NLP Chatbot Project
 
-## Cấu trúc thư mục
-- `app/`: Xử lý NLP backend (retriever, generator)
-- `api`: REST API cho frontend (fastapi)
-- `data/`: Dữ liệu
+Một chatbot thông minh đa chuyên ngành với khả năng quản lý cuộc hội thoại, hỗ trợ các môn học.
 
-## Yêu cầu
+## Features
+
+- **Hỗ trợ AI đa chuyên ngành**: Xử lý chuyên biệt cho các môn học khác nhau
+- **Quản lý cuộc hội thoại**: Tạo, chuyển đổi và xóa cuộc hội thoại với lịch sử lưu trữ
+- **Giao diện web hiện đại**: Thiết kế responsive với thanh điều hướng bên và chat real-time
+- **Kiến trúc modular**: Cấu trúc code rõ ràng, dễ bảo trì với phân tách rõ ràng các chức năng
+- **Lưu trữ phiên làm việc**: Tự động lưu và tải cuộc hội thoại
+
+## Project Structure
+
+```
+Project-NLP/
+├── api/                    # Các module API backend
+│   ├── main.py            # Ứng dụng Flask và REST endpoints
+│   ├── config.py          # Cấu hình và system prompts
+│   ├── session_manager.py # Manage các cuộc hội thoại và phiên làm việc
+│   ├── ai_handlers.py     # Xử lý AI cho từng chuyên ngành
+│   └── utils.py           # Các hàm tiện ích
+├── frontend/              # Giao diện web
+│   ├── index.html         # HTML chính với layout sidebar
+│   └── chatbot.js         # JavaScript cho quản lý cuộc hội thoại
+├── data/                  # Lưu trữ dữ liệu
+└── requirements.txt       # Các lib python cần thiết
+```
+
+## Requirements
+
 - Python 3.13+
-- Các thư viện trong `requirements.txt`
-- Đã đăng nhập HuggingFace CLI và có quyền truy cập model BkAI
+- Flask framework
+- OpenAI API key
+- Các package được liệt kê trong `requirements.txt`
 
-## Cài đặt
+## Installation
+
 ```bash
-git clone https://github.com/QuocAnhh/q-a-system.git
-cd q-a-system
+git clone <repository-url>
+cd Project-NLP
 pip install -r requirements.txt
-huggingface-cli login  # Đăng nhập để tải model trên huggingface (model gate)
 ```
 
-## Chạy
+Tạo file `.env` trong thư mục `api/` và thêm OpenAI API key:
+```
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+## Running the Application
+
+### Khởi động Backend API
 ```bash
-streamlit run app\app.py
-python -m streamlit run app\app.py
+cd api
+python main.py
 ```
+API server sẽ chạy tại `http://localhost:5000`
 
-## Mô hình sử dụng
-- Truy xuất: SentenceTransformer (có thể đổi sang model tiếng Việt)
-- Sinh câu trả lời: `bkai-foundation-models/vietnamese-llama2-7b-40GB` (đa lĩnh vực, tiếng Việt)
+### Truy cập Frontend
+Mở file `frontend/index.html` trong trình duyệt web hoặc chạy qua local server:
 
-## Ghi chú
-- Lần đầu chạy sẽ tự động tải model từ HuggingFace.
-- Nếu gặp lỗi quyền truy cập model, hãy "Request access" trên trang model HuggingFace và kiểm tra lại token.
+```bash
+cd frontend
+python -m http.server 8080
+```
+Sau đó truy cập `http://localhost:8080`
+
+## API Endpoints
+
+### Core Chat
+- `POST /chat` - Gửi tin nhắn và nhận phản hồi từ AI
+
+### Conversation Management
+- `GET /conversations` - Lấy danh sách tất cả cuộc hội thoại
+- `POST /conversations/new` - Tạo cuộc hội thoại mới
+- `GET /conversations/<id>` - Lấy cuộc hội thoại cụ thể
+- `DELETE /conversations/<id>` - Xóa cuộc hội thoại
+- `POST /conversations/<id>/switch` - Chuyển sang cuộc hội thoại khác
+
+### Utility
+- `GET /mode` - Lấy chế độ AI hiện tại
+- `POST /mode` - Thiết lập chế độ AI (math, physics, programming, study)
+
+## AI Models Used
+
+- **Text Generation**: OpenAI GPT-3.5-turbo 
+
+## Key Features
+
+### Conversation Management
+- Tạo cuộc hội thoại mới với tiêu đề tự động
+- Chuyển đổi giữa nhiều luồng hội thoại
+- Xóa cuộc hội thoại không cần thiết
+- Lịch sử hội thoại được lưu trữ lâu dài
+
+### Modular Backend
+- Split chức năng với các module chuyên biệt
+- Manage cấu hình tập trung
+- Xử lý lỗi tốt và validation
+- Monitor cuộc hội thoại bằng UUID
+
+## Notes
+
+- Cần có OpenAI API key để sử dụng các tính năng AI
+- Cuộc hội thoại được tự động lưu và duy trì giữa các phiên làm việc
+- Ứng dụng hỗ trợ nhiều cuộc hội thoại đồng thời với ngữ cảnh độc lập
+- Hỗ trợ tiếng Việt toàn diện trong giao diện và phản hồi AI
 
