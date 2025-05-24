@@ -8,14 +8,28 @@ openai.api_key = Config.OPENAI_API_KEY
 
 
 def call_openai_api(question, system_prompt, subject):
-    """Gọi OpenAI API với system prompt"""
+    """Gọi OpenAI API với system prompt và lịch sử hội thoại"""
     try:
+        from session_manager import get_current_conversation
+        
+        # Lấy lịch sử hội thoại hiện tại
+        conversation = get_current_conversation()
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Thêm lịch sử hội thoại (giới hạn 8 tin nhắn gần nhất để tránh quá dài)
+        # Chỉ thêm các tin nhắn đã hoàn thành (có cả question và answer)
+        recent_messages = conversation.get('messages', [])[-8:]
+        for msg in recent_messages:
+            if msg.get('question') and msg.get('answer'):
+                messages.append({"role": "user", "content": msg['question']})
+                messages.append({"role": "assistant", "content": msg['answer']})
+        
+        # Thêm câu hỏi hiện tại
+        messages.append({"role": "user", "content": question})
+        
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": question}
-            ],
+            messages=messages,
             max_tokens=1000,
             temperature=0.7
         )
@@ -53,15 +67,15 @@ def handle_ai_question(question):
     if any(keyword in q for keyword in ['thời gian', 'kế hoạch', 'lịch trình', 'quản lý']):
         return handle_time_management_questions(question)
     
-    try:
-        # Sử dụng system prompt chung cho giáo dục
+    try:        # Sử dụng system prompt chung cho giáo dục với context
         general_prompt = """Bạn là một trợ lý học tập thông minh, thân thiện và hiểu biết rộng.
         Nhiệm vụ của bạn là:
         - Trả lời các câu hỏi học tập một cách chính xác và dễ hiểu
         - Đưa ra lời khuyên học tập phù hợp
         - Khuyến khích tinh thần ham học hỏi
         - Trả lời bằng tiếng Việt, sử dụng HTML formatting cho câu trả lời đẹp
-        - Luôn tích cực và hỗ trợ học sinh"""
+        - Luôn tích cực và hỗ trợ học sinh
+        - Tham khảo lịch sử hội thoại để đưa ra câu trả lời liên quan và có ngữ cảnh"""
         
         ai_response = call_openai_api(question, general_prompt, "Học tập chung")
         
