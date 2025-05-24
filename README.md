@@ -37,14 +37,14 @@ Project-NLP/
 ## Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/QuocAnhh/q-a-system.git
 cd Project-NLP
 pip install -r requirements.txt
 ```
 
 Tạo file `.env` trong thư mục `api/` và thêm OpenAI API key:
 ```
-OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_API_KEY=sk-xxxx
 ```
 
 ## Running the Application
