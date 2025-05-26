@@ -2,7 +2,8 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Chatbot Học tập thông minh AI</title>
+    <title>Copailit AI</title>
+    <link rel="icon" type="image/x-icon" href="images/logo.ico">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,42 +12,41 @@
         <div class="sidebar">
             <h3>💬 Cuộc hội thoại</h3>
             <button class="new-chat-btn" onclick="createNewConversation()">
-                ➕ Cuộc hội thoại mới
+                 + Cuộc hội thoại mới
             </button>
             <div class="conversation-list" id="conversationList">
-                <!-- Conversations will be loaded here -->
+                
             </div>
         </div>
 
         <!-- Main chat container -->
         <div class="container">
-            <div class="ai-mode-indicator" id="aiModeIndicator" style="display: none;">
-                🤖 Chế độ: <span id="currentMode"></span>
-            </div>
-            
-            <div class="header">
-                <h1>🤖 Chatbot Học tập AI</h1>
-                <p>Trợ lý thông minh hỗ trợ học tập và quản lý thời gian</p>
-            </div>
 
-            <div class="features">
-                <button class="feature-btn" onclick="askQuestion('Giải thích công thức toán học')">📐 Toán học</button>
-                <button class="feature-btn" onclick="askQuestion('Giải thích định luật vật lý')">⚡ Vật lý</button>
-                <button class="feature-btn" onclick="askQuestion('Hướng dẫn lập trình Python')">💻 Lập trình</button>
-                <button class="feature-btn" onclick="askQuestion('Mẹo học tập hiệu quả')">📚 Học tập</button>
-                <button class="feature-btn" onclick="askQuestion('deadline')">📅 Deadline</button>
-                <button class="feature-btn" onclick="askQuestion('lịch hôm nay')">🗓️ Lịch học</button>
+            <div class="menu">
+                <div class="ai-mode-indicator" id="aiModeIndicator" style="display: none;">
+                    🤖 Chế độ: <span id="currentMode"></span>
+                </div>
+                
+                <div class="header">
+                    <h1>Copailit AI</h1>
+                    <p>Trợ lý thông minh hỗ trợ học tập và quản lý thời gian</p>
+                </div>
+
+                <!-- <div class="features">
+                    <button class="feature-btn" onclick="askQuestion('Giải thích công thức toán học')">📐 Toán học</button>
+                    <button class="feature-btn" onclick="askQuestion('Giải thích định luật vật lý')">⚡ Vật lý</button>
+                    <button class="feature-btn" onclick="askQuestion('Hướng dẫn lập trình Python')">💻 Lập trình</button>
+                    <button class="feature-btn" onclick="askQuestion('Mẹo học tập hiệu quả')">📚 Học tập</button>
+                    <button class="feature-btn" onclick="askQuestion('deadline')">📅 Deadline</button>
+                    <button class="feature-btn" onclick="askQuestion('lịch hôm nay')">🗓️ Lịch học</button>
+                </div> -->
+
             </div>
 
             <div class="chat-box" id="chatBox">
                 <div class="bubble bot">
-                    <strong class="bot">🤖 AI Assistant:</strong><br>
-                    Xin chào! Tôi là trợ lý học tập thông minh. Tôi có thể giúp bạn:
-                    <br>• 📚 Giải thích kiến thức các môn học
-                    <br>• 📅 Quản lý deadline và lịch học  
-                    <br>• 🔍 Tìm tài liệu học tập
-                    <br>• 💡 Đưa ra lời khuyên học tập
-                    <br><br>Hãy hỏi tôi bất cứ điều gì bạn muốn biết!
+                    <strong class="bot">🤖 Copailit:</strong><br>
+                    Xin chào! Tôi là Copailit AI. Tôi có thể giúp bạn!
                 </div>
             </div>
 
@@ -55,7 +55,9 @@
                 <div class="suggestion" onclick="askQuestion('Giải thích định lý Pythagore')">📐 Định lý Pythagore</div>
                 <div class="suggestion" onclick="askQuestion('Cách học Python')">🐍 Học Python</div>
                 <div class="suggestion" onclick="askQuestion('Mẹo quản lý thời gian')">⏰ Quản lý thời gian</div>
-            </div>            <div class="input-container">
+            </div>      
+              
+            <div class="input-container">
                 <input type="text" id="questionInput" placeholder="Nhập câu hỏi của bạn...">
                 <button class="send-btn" onclick="sendQuestion()">Gửi</button>
             </div>

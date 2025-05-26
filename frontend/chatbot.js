@@ -310,7 +310,7 @@ function addMessage(message, sender, isTyping = false) {
     messageDiv.className = `bubble ${sender} ${isTyping ? 'typing' : ''}`;
     messageDiv.id = messageId;
     
-    const senderLabel = sender === 'user' ? '👤 Bạn' : '🤖 AI Assistant';
+    const senderLabel = sender === 'user' ? '😺  Bạn' : '🤖 Copailit';
     
     if (isTyping) {
         messageDiv.innerHTML = `<strong class="${sender}">${senderLabel}:</strong><br>${message}`;
