@@ -2,19 +2,21 @@ from flask import Flask, request, jsonify, session, send_from_directory, send_fi
 from flask_cors import CORS
 import os
 from datetime import datetime
+import json
 
 from config import Config
-from session_manager import (
+from db_session_manager import (
     get_user_data, save_user_data, create_new_conversation, 
     get_current_conversation, switch_conversation, add_message_to_conversation,
-    get_conversation_history, delete_conversation
+    get_conversation_history, delete_conversation, migrate_session_to_database,
+    export_all_data, export_to_html
 )
-from ai_handlers import handle_ai_question
+from ai_handlers import handle_ai_question, handle_ai_question_with_context
 from utils import handle_deadline_commands, handle_calendar_commands, handle_document_search
 
 app = Flask(__name__)
 CORS(app)
-app.secret_key = Config.SECRET_KEY
+app.secret_key = "debug_secret_key_for_testing_12345"  # Hardcoded for debugging
 
 
 @app.route("/")
@@ -55,7 +57,7 @@ def health_check():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    """Main chat endpoint"""
+    """Main chat endpoint với improved error handling và context preservation"""
     try:
         data = request.json
         if not data:
@@ -66,14 +68,44 @@ def chat():
         if not question:
             return jsonify({"error": "Bạn chưa nhập câu hỏi!"}), 400
         
-        # Xử lý câu hỏi và trả về phản hồi
-        response = process_question(question)
+        print(f"[DEBUG] Processing question: {question[:100]}...")
         
-        # Lưu vào cuộc hội thoại hiện tại
-        message = add_message_to_conversation(question, response["answer"], response.get("ai_mode"))
+        # LẤY CONTEXT từ cuộc hội thoại hiện tại
+        current_conversation = get_current_conversation()
+        context_messages = []
+        
+        if current_conversation and current_conversation.get('messages'):
+            # Lấy 5 tin nhắn gần nhất để làm context
+            recent_messages = current_conversation['messages'][-5:]
+            for msg in recent_messages:
+                context_messages.extend([
+                    {"role": "user", "content": msg.get('question', '')},
+                    {"role": "assistant", "content": msg.get('answer', '')}
+                ])
+        
+        # Xử lý câu hỏi với context
+        response = process_question_with_context(question, context_messages)
+        
+        if not response or not isinstance(response, dict):
+            return jsonify({"error": "Có lỗi xử lý câu hỏi"}), 500
+        
+        # Lưu vào cuộc hội thoại hiện tại với error handling
+        try:
+            message = add_message_to_conversation(
+                question, 
+                response.get("answer", "Không có phản hồi"), 
+                response.get("ai_mode")
+            )
+            if message:
+                print(f"[DEBUG] Message saved successfully: {message['id']}")
+            else:
+                print("[WARNING] Failed to save message")
+        except Exception as save_error:
+            print(f"[ERROR] Failed to save message: {save_error}")
+            # Vẫn trả về response mà không fail
         
         return jsonify({
-            "answer": response["answer"],
+            "answer": response.get("answer", "Có lỗi xảy ra"),
             "suggestions": response.get("suggestions", []),
             "calendar_events": response.get("calendar_events", []),
             "ai_mode": response.get("ai_mode", None),
@@ -84,7 +116,7 @@ def chat():
         print(f"Error in chat endpoint: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({"error": "Có lỗi xảy ra khi xử lý yêu cầu"}), 500
+        return jsonify({"error": "Có lỗi xảy ra khi xử lý yêu cầu. Vui lòng thử lại."}), 500
 
 
 @app.route("/conversations", methods=["GET"])
@@ -168,64 +200,85 @@ def switch_to_conversation(conversation_id):
         return jsonify({"error": "Không thể chuyển cuộc hội thoại"}), 500
 
 
-# phần xử lý logic chính
-def process_question(question):
-    """Xử lý câu hỏi từ người dùng"""
+@app.route("/export-chat", methods=["GET"])
+def export_chat_history():
+    """Export toàn bộ lịch sử chat dưới dạng HTML"""
+    try:
+        from flask import Response
+        
+        html_content = export_to_html()
+        
+        # Tạo response với HTML content
+        response = Response(
+            html_content,
+            mimetype='text/html',
+            headers={
+                "Content-Disposition": f"attachment; filename=chat_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+            }
+        )
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error exporting chat: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "error": f"Không thể export chat: {str(e)}",
+            "debug_info": {
+                "error_type": type(e).__name__,
+                "timestamp": datetime.now().isoformat()
+            }
+        }), 500
+
+
+# phần xử lý logic chính với context
+def process_question_with_context(question, context_messages=None):
+    """Xử lý câu hỏi từ người dùng với context từ lịch sử cuộc trò chuyện"""
     q = question.lower().strip()
     user_data = get_user_data()
     
-    # xử lý deadline commands
-    if 'deadline' in q:
-        return handle_deadline_commands(question, user_data)
+    print(f"[DEBUG] process_question_with_context called with: {question}")
+    print(f"[DEBUG] Context messages count: {len(context_messages) if context_messages else 0}")
     
-    # xử lý calendar commands
-    if any(keyword in q for keyword in ['lịch', 'calendar', 'thêm lịch']):
-        return handle_calendar_commands(question, user_data)
+    # 1. Ưu tiên các lệnh chào hỏi TRƯỚC TIÊN
+    greeting_patterns = [
+        q == 'xin chào', q == 'chào', q == 'hello', q == 'hi',
+        q.startswith('xin chào'), q.startswith('chào bạn'), 
+        q.startswith('hello '), q.startswith('hi '),
+        q in ['xin chào!', 'chào!', 'hello!', 'hi!']
+    ]
     
-    # xử lý tìm kiếm tài liệu
-    if any(keyword in q for keyword in ['tài liệu', 'học', 'tìm', 'search']):
-        return handle_document_search(question, user_data)
-    
-    # xử lý general commands
-    return handle_general_commands(question, user_data)
-
-
-def handle_general_commands(question, user_data):
-    """Xử lý các lệnh chung và câu hỏi AI"""
-    q = question.lower()
-    
-    if any(keyword in q for keyword in ['xin chào', 'hello', 'hi', 'chào']):
+    if any(greeting_patterns):
+        print(f"[DEBUG] Detected greeting")
         return {
             "answer": "👋 Xin chào! Tôi là trợ lý học tập thông minh. Tôi có thể giúp bạn:<br>• 📅 Quản lý lịch học và deadline<br>• 📚 Tìm tài liệu và giải thích kiến thức<br>• 🤖 Trả lời các câu hỏi học tập<br>• 💡 Đưa ra lời khuyên và gợi ý học tập",
             "suggestions": ["Giải thích về Python", "Công thức Toán", "Lịch sử Việt Nam", "Mẹo học tập"]
         }
     
-    if any(keyword in q for keyword in ['giúp', 'help', 'hướng dẫn']):
-        return {
-            "answer": """
-                📖 <strong>Hướng dẫn sử dụng:</strong><br><br>
-                <strong>🤖 Hỏi đáp AI học tập:</strong><br>
-                • Hỏi bất kỳ câu hỏi nào về học tập<br>
-                • Giải thích khái niệm, công thức các môn học<br>
-                • Hướng dẫn cách làm bài tập<br>
-                • Mẹo và phương pháp học tập hiệu quả<br><br>
-                
-                <strong>🗓️ Quản lý deadline:</strong><br>
-                • "deadline" - Xem tất cả deadline<br>
-                • "thêm deadline Toán 2024-12-25" - Thêm deadline mới<br>
-                • "xóa deadline Toán" - Xóa deadline<br><br>
-                
-                <strong>📅 Quản lý lịch học:</strong><br>
-                • "lịch hôm nay" - Xem lịch hôm nay<br>
-                • "lịch tuần này" - Xem lịch tuần<br><br>
-                
-                <strong>📚 Tìm tài liệu:</strong><br>
-                • "tìm tài liệu Python" - Tìm tài liệu học tập<br>
-            """,
-            "suggestions": ["Hỏi về Toán", "Giải thích Vật lý", "Lập trình Python", "Mẹo ôn thi"]
-        }
+    # 2. Các lệnh deadline
+    if q.startswith('deadline') or 'thêm deadline' in q or 'xóa deadline' in q:
+        print(f"[DEBUG] Detected deadline command")
+        return handle_deadline_commands(question, user_data)
     
-    return handle_ai_question(question)
+    # 3. Lệnh quản lý lịch
+    if any(phrase in q for phrase in ['lịch hôm nay', 'lịch tuần', 'thêm lịch', 'calendar', 'lịch học']):
+        print(f"[DEBUG] Detected calendar command")
+        return handle_calendar_commands(question, user_data)
+    
+    # 4. Tìm kiếm tài liệu
+    if q.startswith('tìm tài liệu') or q.startswith('search'):
+        print(f"[DEBUG] Detected document search")
+        return handle_document_search(question, user_data)
+    
+    # 5. Còn lại tất cả đều là câu hỏi học tập - chuyển cho AI handler với context
+    print(f"[DEBUG] Routing to AI handler with context")
+    return handle_ai_question_with_context(question, context_messages)
+
+
+def process_question(question):
+    """Xử lý câu hỏi từ người dùng (compatibility function)"""
+    return process_question_with_context(question, None)
 
 
 if __name__ == "__main__":

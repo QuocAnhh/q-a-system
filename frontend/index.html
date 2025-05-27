@@ -7,13 +7,19 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="main-layout">
-        <!-- Sidebar for conversation management -->
+    <div class="main-layout">        <!-- Sidebar for conversation management -->
         <div class="sidebar">
             <h3>💬 Cuộc hội thoại</h3>
             <button class="new-chat-btn" onclick="createNewConversation()">
                  + Cuộc hội thoại mới
             </button>
+              <!-- Debug tools -->
+            <div class="debug-tools">
+                <button class="debug-btn" onclick="exportChatHistory()" title="Tải xuống lịch sử chat để debug">
+                    📥 Export Chat
+                </button>
+            </div>
+            
             <div class="conversation-list" id="conversationList">
                 
             </div>
@@ -22,25 +28,9 @@
         <!-- Main chat container -->
         <div class="container">
 
-            <div class="menu">
-                <div class="ai-mode-indicator" id="aiModeIndicator" style="display: none;">
-                    🤖 Chế độ: <span id="currentMode"></span>
-                </div>
-                
-                <div class="header">
-                    <h1>Copailit AI</h1>
-                    <p>Trợ lý thông minh hỗ trợ học tập và quản lý thời gian</p>
-                </div>
-
-                <!-- <div class="features">
-                    <button class="feature-btn" onclick="askQuestion('Giải thích công thức toán học')">📐 Toán học</button>
-                    <button class="feature-btn" onclick="askQuestion('Giải thích định luật vật lý')">⚡ Vật lý</button>
-                    <button class="feature-btn" onclick="askQuestion('Hướng dẫn lập trình Python')">💻 Lập trình</button>
-                    <button class="feature-btn" onclick="askQuestion('Mẹo học tập hiệu quả')">📚 Học tập</button>
-                    <button class="feature-btn" onclick="askQuestion('deadline')">📅 Deadline</button>
-                    <button class="feature-btn" onclick="askQuestion('lịch hôm nay')">🗓️ Lịch học</button>
-                </div> -->
-
+            <div class="header">
+                <h1>Copailit AI</h1>
+                <p>Trợ lý thông minh hỗ trợ học tập và quản lý thời gian</p>
             </div>
 
             <div class="chat-box" id="chatBox">

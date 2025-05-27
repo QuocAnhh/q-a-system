@@ -120,10 +120,16 @@ def switch_conversation(conversation_id):
 
 
 def add_message_to_conversation(question, answer, ai_mode=None):
-    """Thêm tin nhắn vào cuộc hội thoại hiện tại"""
+    """Thêm tin nhắn vào cuộc hội thoại hiện tại với thread safety"""
     try:
         user_data = get_user_data()
         conversation = get_current_conversation()
+        
+        # Đảm bảo conversation tồn tại và có structure đúng
+        if not conversation or 'messages' not in conversation:
+            conversation = create_new_conversation()
+            user_data['conversations'][conversation['id']] = conversation
+            user_data['current_conversation_id'] = conversation['id']
         
         message = {
             'id': str(uuid.uuid4()),
@@ -133,6 +139,7 @@ def add_message_to_conversation(question, answer, ai_mode=None):
             'ai_mode': ai_mode
         }
         
+        # Thêm message vào conversation
         conversation['messages'].append(message)
         conversation['updated_at'] = datetime.now().isoformat()
         
@@ -142,13 +149,22 @@ def add_message_to_conversation(question, answer, ai_mode=None):
             title = question[:50] + "..." if len(question) > 50 else question
             conversation['title'] = title
         
+        # Cập nhật AI mode cho conversation
         if ai_mode:
             conversation['ai_mode'] = ai_mode
+            user_data['current_ai_mode'] = ai_mode
         
+        # Lưu ngay lập tức để tránh mất dữ liệu
         save_user_data(user_data)
+        
+        # Debug log
+        print(f"[DEBUG] Added message to conversation {conversation['id']}, total messages: {len(conversation['messages'])}")
+        
         return message
     except Exception as e:
         print(f"Error in add_message_to_conversation: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -215,3 +231,77 @@ def get_ai_mode():
     """Lấy chế độ AI hiện tại"""
     user_data = get_user_data()
     return user_data.get('current_ai_mode', None)
+
+
+def cleanup_old_conversations():
+    """Dọn dẹp các cuộc hội thoại cũ để tối ưu memory"""
+    try:
+        user_data = get_user_data()
+        conversations = user_data.get('conversations', {})
+        
+        # Tăng giới hạn lên 50 conversations thay vì 10
+        max_conversations = 50
+        
+        if len(conversations) <= max_conversations:
+            return
+        
+        # Sắp xếp theo thời gian cập nhật
+        sorted_convs = sorted(
+            conversations.items(), 
+            key=lambda x: x[1].get('updated_at', ''), 
+            reverse=True
+        )
+        
+        # Giữ lại conversations mới nhất
+        keep_convs = dict(sorted_convs[:max_conversations])
+        
+        # Cập nhật lại dữ liệu
+        user_data['conversations'] = keep_convs
+        
+        # Nếu current conversation bị xóa, chuyển sang conversation mới nhất
+        if user_data.get('current_conversation_id') not in keep_convs:
+            if keep_convs:
+                user_data['current_conversation_id'] = list(keep_convs.keys())[0]
+            else:
+                user_data['current_conversation_id'] = None
+        
+        save_user_data(user_data)
+        print(f"[DEBUG] Cleaned up conversations, kept {len(keep_convs)} out of {len(conversations)}")
+        
+    except Exception as e:
+        print(f"Error in cleanup_old_conversations: {e}")
+
+
+def get_conversation_context_summary(conversation_id):
+    """Lấy tóm tắt ngữ cảnh của cuộc hội thoại để cải thiện context preservation"""
+    try:
+        user_data = get_user_data()
+        conversation = user_data['conversations'].get(conversation_id)
+        
+        if not conversation or not conversation.get('messages'):
+            return ""
+        
+        # Lấy 3 tin nhắn đầu và 3 tin nhắn cuối để tạo context summary
+        messages = conversation['messages']
+        if len(messages) <= 6:
+            return ""
+        
+        first_messages = messages[:3]
+        last_messages = messages[-3:]
+        
+        summary = "Tóm tắt ngữ cảnh cuộc hội thoại:\n"
+        summary += "Phần đầu:\n"
+        for msg in first_messages:
+            summary += f"Q: {msg['question'][:100]}...\n"
+            summary += f"A: {msg['answer'][:100]}...\n"
+        
+        summary += "\nPhần gần đây:\n"
+        for msg in last_messages:
+            summary += f"Q: {msg['question'][:100]}...\n"
+            summary += f"A: {msg['answer'][:100]}...\n"
+        
+        return summary
+        
+    except Exception as e:
+        print(f"Error in get_conversation_context_summary: {e}")
+        return ""

@@ -2,6 +2,10 @@
 // Biến toàn cục
 let currentConversationId = null;
 let conversations = [];
+let messageCounter = 0; // Đảm bảo thứ tự tin nhắn
+let pendingMessages = new Map(); // Theo dõi tin nhắn đang xử lý
+let isProcessing = false; // Debouncing để tránh spam requests
+let lastRequestTime = 0; // Tracking để rate limiting
 
 // Khởi tạo chatbot khi trang được tải
 document.addEventListener('DOMContentLoaded', function() {
@@ -10,8 +14,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function initializeApp() {
     try {
+        // Clear everything first
+        clearChatBox();
+        messageCounter = 0;
+        pendingMessages.clear();
+        currentConversationId = null;
+        
+        // Load conversations
         await loadConversations();
-        showWelcomeMessage();
+        
+        // Show welcome message chỉ khi không có conversation nào active
+        const currentConv = conversations.find(c => c.is_current);
+        if (!currentConv) {
+            showWelcomeMessage();
+        } else {
+            // Load messages của conversation hiện tại
+            currentConversationId = currentConv.id;
+            await loadConversationMessages(currentConv.id);
+            updateAIModeIndicator(currentConv.ai_mode);
+        }
+        
         setupEventListeners();
     } catch (error) {
         console.error('Lỗi khởi tạo:', error);
@@ -20,36 +42,99 @@ async function initializeApp() {
 }
 
 function setupEventListeners() {
+    console.log('[DEBUG] Setting up event listeners');
     const questionInput = document.getElementById('questionInput');
-    questionInput.addEventListener('keypress', function(e) {
+    if (!questionInput) {
+        console.error('[ERROR] Question input element not found!');
+        return;
+    }
+    
+    // Remove any existing event listeners first (to avoid duplicates)
+    const newInput = questionInput.cloneNode(true);
+    questionInput.parentNode.replaceChild(newInput, questionInput);
+    
+    // Add event listener to the new input
+    newInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
+            console.log('[DEBUG] Enter key pressed');
+            e.preventDefault(); // Prevent default form submission
             sendQuestion();
         }
     });
+    
+    console.log('[DEBUG] Event listener for Enter key added');
 }
 
 function showWelcomeMessage() {
     // Welcome message đã có sẵn trong HTML
 }
 
+// ====== SESSION MANAGEMENT ======
+
+function getOrCreateSessionId() {
+    let sessionId = localStorage.getItem('chatbot_session_id');
+    if (!sessionId) {
+        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('chatbot_session_id', sessionId);
+        console.log('[DEBUG] Created new session ID:', sessionId);
+    } else {
+        console.log('[DEBUG] Using existing session ID:', sessionId);
+    }
+    return sessionId;
+}
+
+// Gửi session ID với mỗi request
+function fetchWithSession(url, options = {}) {
+    const sessionId = getOrCreateSessionId();
+    
+    // Thêm session ID vào headers
+    if (!options.headers) {
+        options.headers = {};
+    }
+    options.headers['X-Session-ID'] = sessionId;
+    
+    // Đảm bảo credentials được gửi
+    options.credentials = 'include';
+    
+    return fetch(url, options);
+}
+
 // ====== CONVERSATION MANAGEMENT ======
 
 async function loadConversations() {
     try {
-        const response = await fetch('/conversations');
+        console.log('[DEBUG] Loading conversations...');
+        const response = await fetchWithSession('/conversations');
         const data = await response.json();
         
+        console.log('[DEBUG] Conversations response:', data);
+        
         if (response.ok) {
-            conversations = data.conversations;
+            conversations = data.conversations || [];
+            console.log('[DEBUG] Total conversations loaded:', conversations.length);
+            
+            // Luôn render conversations (kể cả khi rỗng)
             renderConversations();
             
-            // Nếu có cuộc hội thoại đang active, load nó
+            // Tìm và set current conversation
             const currentConv = conversations.find(c => c.is_current);
+            console.log('[DEBUG] Current conversation:', currentConv);
+            
             if (currentConv) {
-                currentConversationId = currentConv.id;
-                await loadConversationMessages(currentConv.id);
-                updateAIModeIndicator(currentConv.ai_mode);
+                // Chỉ set currentConversationId nếu chưa có hoặc khác
+                if (currentConversationId !== currentConv.id) {
+                    currentConversationId = currentConv.id;
+                    updateAIModeIndicator(currentConv.ai_mode);
+                    console.log('[DEBUG] Set current conversation ID:', currentConversationId);
+                }
+            } else {
+                // Không có conversation nào active
+                currentConversationId = null;
+                updateAIModeIndicator(null);
+                console.log('[DEBUG] No active conversation found');
             }
+        } else {
+            console.error('[DEBUG] Failed to load conversations:', data);
         }
     } catch (error) {
         console.error('Lỗi khi tải danh sách cuộc hội thoại:', error);
@@ -57,31 +142,53 @@ async function loadConversations() {
 }
 
 function renderConversations() {
+    console.log('[DEBUG] Rendering conversations, count:', conversations.length);
     const listElement = document.getElementById('conversationList');
     
     if (conversations.length === 0) {
+        console.log('[DEBUG] No conversations to render');
         listElement.innerHTML = '<p style="text-align: center; color: #666; font-style: italic;">Chưa có cuộc hội thoại nào</p>';
         return;
     }
     
+    console.log('[DEBUG] Rendering', conversations.length, 'conversations');
     listElement.innerHTML = conversations.map(conv => {
         const date = new Date(conv.updated_at).toLocaleDateString('vi-VN');
         const time = new Date(conv.updated_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'});
         
+        // Check if this is the current conversation
+        const isActive = conv.is_current || conv.id === currentConversationId;
+        
         return `
-            <div class="conversation-item ${conv.is_current ? 'active' : ''}" onclick="switchConversation('${conv.id}')">
+            <div class="conversation-item ${isActive ? 'active' : ''}" onclick="switchConversation('${conv.id}')">
                 <div class="conversation-title">${conv.title}</div>
                 <div class="conversation-meta">
                     ${conv.message_count} tin nhắn • ${date} ${time}
                     ${conv.ai_mode ? `• 🤖 ${getAIModeDisplay(conv.ai_mode)}` : ''}
                 </div>
                 <div class="conversation-actions">
-                    <small>${conv.is_current ? '• Đang active' : ''}</small>
+                    <small>${isActive ? '• Đang active' : ''}</small>
                     <button class="delete-btn" onclick="deleteConversation('${conv.id}', event)">Xóa</button>
                 </div>
             </div>
         `;
     }).join('');
+}
+
+async function updateConversationMetadata() {
+    try {
+        const response = await fetch('/conversations');
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Chỉ cập nhật conversations array mà KHÔNG thay đổi currentConversationId
+            // hoặc reload messages
+            conversations = data.conversations;
+            renderConversations();
+        }
+    } catch (error) {
+        console.error('Lỗi khi cập nhật metadata cuộc hội thoại:', error);
+    }
 }
 
 function getAIModeDisplay(mode) {
@@ -100,7 +207,9 @@ function getAIModeDisplay(mode) {
 
 async function createNewConversation() {
     try {
-        const response = await fetch('/conversations/new', {
+        console.log('[DEBUG] Creating new conversation...');
+        
+        const response = await fetchWithSession('/conversations/new', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -110,23 +219,29 @@ async function createNewConversation() {
         const data = await response.json();
         
         if (response.ok) {
-            // Clear chat box
-            clearChatBox();
+            console.log('[DEBUG] New conversation created:', data.conversation);
             
-            // Update current conversation
+            // Update current conversation ID
             currentConversationId = data.conversation.id;
             
-            // Reload conversations list
+            // Reset chat state
+            clearChatBox();
+            messageCounter = 0;
+            pendingMessages.clear();
+            
+            // Update UI
+            showWelcomeMessage();
+            updateAIModeIndicator(data.conversation.ai_mode);
+            
+            // Reload conversations list để hiển thị conversation mới
             await loadConversations();
             
-            // Show welcome message
-            showWelcomeMessage();
-            
-            // Clear AI mode
-            updateAIModeIndicator(null);
+            // Update active UI ngay lập tức
+            updateActiveConversationUI(currentConversationId);
             
             showMessage('✅ Đã tạo cuộc hội thoại mới!', 'success');
         } else {
+            console.error('[DEBUG] Failed to create conversation:', data);
             showMessage('❌ Không thể tạo cuộc hội thoại mới: ' + data.error, 'error');
         }
     } catch (error) {
@@ -137,7 +252,13 @@ async function createNewConversation() {
 
 async function switchConversation(conversationId) {
     try {
-        const response = await fetch(`/conversations/${conversationId}/switch`, {
+        // Tránh multiple clicks
+        if (currentConversationId === conversationId) {
+            return;
+        }
+        
+        console.log('[DEBUG] Switching to conversation:', conversationId);
+          const response = await fetchWithSession(`/conversations/${conversationId}/switch`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -147,17 +268,20 @@ async function switchConversation(conversationId) {
         const data = await response.json();
         
         if (response.ok) {
+            // Update current conversation ID NGAY LẬP TỨC
             currentConversationId = conversationId;
             
-            // Clear chat box and load messages
+            // Update UI ngay để user thấy selection
+            updateActiveConversationUI(conversationId);
+            
+            // Clear và load messages
             clearChatBox();
             await loadConversationMessages(conversationId);
             
-            // Update conversations list
-            await loadConversations();
-            
             // Update AI mode
             updateAIModeIndicator(data.conversation.ai_mode);
+            
+            console.log('[DEBUG] Successfully switched to conversation:', conversationId);
             
         } else {
             showMessage('❌ Không thể chuyển cuộc hội thoại: ' + data.error, 'error');
@@ -176,14 +300,30 @@ async function deleteConversation(conversationId, event) {
     }
     
     try {
-        const response = await fetch(`/conversations/${conversationId}`, {
+        console.log('[DEBUG] Deleting conversation:', conversationId);
+        
+        // Immediately remove the conversation from UI for better UX
+        const conversationElement = event.target.closest('.conversation-item');
+        if (conversationElement) {
+            // Thêm hiệu ứng mờ dần trước khi xóa
+            conversationElement.style.opacity = '0.5';
+            conversationElement.style.pointerEvents = 'none'; // Prevent clicks during deletion
+        }
+        
+        // Send delete request to API
+        const response = await fetchWithSession(`/conversations/${conversationId}`, {
             method: 'DELETE'
         });
         
         const data = await response.json();
         
         if (response.ok) {
-            // If deleting current conversation, clear chat box
+            console.log('[DEBUG] Conversation deleted successfully');
+            
+            // Remove from local array immediately
+            conversations = conversations.filter(conv => conv.id !== conversationId);
+            
+            // If the deleted conversation was the current one, reset UI
             if (conversationId === currentConversationId) {
                 clearChatBox();
                 showWelcomeMessage();
@@ -191,11 +331,22 @@ async function deleteConversation(conversationId, event) {
                 updateAIModeIndicator(null);
             }
             
-            // Reload conversations
+            // Remove element from DOM completely if it still exists
+            if (conversationElement && conversationElement.parentNode) {
+                conversationElement.parentNode.removeChild(conversationElement);
+            }
+            
+            // Reload conversations from API to ensure sync
             await loadConversations();
             
             showMessage('✅ Đã xóa cuộc hội thoại!', 'success');
         } else {
+            // Restore UI if deletion failed
+            if (conversationElement) {
+                conversationElement.style.opacity = '1';
+                conversationElement.style.pointerEvents = 'auto';
+            }
+            
             showMessage('❌ Không thể xóa cuộc hội thoại: ' + data.error, 'error');
         }
     } catch (error) {
@@ -206,17 +357,30 @@ async function deleteConversation(conversationId, event) {
 
 async function loadConversationMessages(conversationId) {
     try {
-        const response = await fetch(`/conversations/${conversationId}`);
+        const response = await fetchWithSession(`/conversations/${conversationId}`);
         const data = await response.json();
         
         if (response.ok) {
             const conversation = data.conversation;
             
-            // Render messages
-            conversation.messages.forEach(message => {
-                addMessage(message.question, 'user');
-                addMessage(message.answer, 'bot');
+            // QUAN TRỌNG: Clear chatbox hoàn toàn trước khi load
+            clearChatBox();
+            
+            // Reset message counter và pending messages
+            messageCounter = 0;
+            pendingMessages.clear();
+            
+            // Render messages theo đúng thứ tự
+            conversation.messages.forEach((message, index) => {
+                const userMsgId = `user-loaded-${conversationId}-${index}`;
+                const botMsgId = `bot-loaded-${conversationId}-${index}`;
+                
+                addMessage(message.question, 'user', false, userMsgId);
+                addMessage(message.answer, 'bot', false, botMsgId);
             });
+            
+            // Set counter for new messages (tránh conflict với loaded messages)
+            messageCounter = conversation.messages.length * 2 + 1000;
             
             // Update AI mode
             updateAIModeIndicator(conversation.ai_mode);
@@ -232,7 +396,16 @@ async function loadConversationMessages(conversationId) {
 
 function clearChatBox() {
     const chatBox = document.getElementById('chatBox');
+    
+    // Clear hoàn toàn innerHTML
     chatBox.innerHTML = '';
+    
+    // Reset các state variables
+    messageCounter = 0;
+    pendingMessages.clear();
+    
+    // Force DOM to re-render
+    chatBox.offsetHeight;
 }
 
 // ====== CHAT FUNCTIONS ======
@@ -246,17 +419,41 @@ async function sendQuestion() {
         return;
     }
     
+    // Debouncing - tránh spam requests
+    if (isProcessing) {
+        showMessage('Vui lòng đợi câu trả lời trước khi gửi câu hỏi mới!', 'warning');
+        return;
+    }
+    
+    // Rate limiting - tối thiểu 1 giây giữa các requests
+    const currentTime = Date.now();
+    if (currentTime - lastRequestTime < 1000) {
+        showMessage('Vui lòng đợi ít nhất 1 giây giữa các câu hỏi!', 'warning');
+        return;
+    }
+    
+    isProcessing = true;
+    lastRequestTime = currentTime;
+    
+    // Tạo unique message ID để đảm bảo thứ tự
+    const messageId = ++messageCounter;
+    const userMessageId = `user-${messageId}`;
+    const botMessageId = `bot-${messageId}`;
+    
     // Disable input while processing
     input.disabled = true;
     
-    // Add user message
-    addMessage(question, 'user');
+    // Add user message với ID cố định
+    addMessage(question, 'user', false, userMessageId);
     
-    // Show typing indicator
-    const typingId = addMessage('Đang trả lời...', 'bot', true);
+    // Show typing indicator với ID cố định
+    addMessage('🤖 Đang trả lời...', 'bot', true, botMessageId);
     
     // Clear input
     input.value = '';
+    
+    // Đánh dấu tin nhắn đang xử lý
+    pendingMessages.set(messageId, { question, userMessageId, botMessageId });
     
     try {
         const response = await fetch('/chat', {
@@ -269,14 +466,19 @@ async function sendQuestion() {
         
         const data = await response.json();
         
-        // Remove typing indicator
-        removeMessage(typingId);
+        // Kiểm tra xem tin nhắn này có còn pending không (tránh race condition)
+        if (!pendingMessages.has(messageId)) {
+            console.warn(`Message ${messageId} was already processed`);
+            return;
+        }
+        
+        // Remove từ pending
+        pendingMessages.delete(messageId);
         
         if (response.ok) {
-            // Add bot response
-            addMessage(data.answer, 'bot');
-            
-            // Update suggestions
+            // Replace typing indicator với response thực tế
+            replaceMessage(botMessageId, data.answer, 'bot');
+              // Update suggestions
             updateSuggestions(data.suggestions || []);
             
             // Update AI mode indicator
@@ -284,44 +486,82 @@ async function sendQuestion() {
                 updateAIModeIndicator(data.ai_mode);
             }
             
-            // Reload conversations to update the list
-            await loadConversations();
+            // Chỉ cập nhật conversation list mà KHÔNG reload messages
+            // để cập nhật metadata như message count
+            setTimeout(() => {
+                updateConversationMetadata();
+            }, 500);
             
         } else {
-            addMessage('❌ Lỗi: ' + data.error, 'bot');
+            replaceMessage(botMessageId, '❌ Lỗi: ' + data.error, 'bot');
         }
         
     } catch (error) {
         console.error('Lỗi khi gửi câu hỏi:', error);
-        removeMessage(typingId);
-        addMessage('❌ Có lỗi xảy ra khi gửi câu hỏi. Vui lòng thử lại.', 'bot');
+        
+        // Kiểm tra xem tin nhắn có còn pending không
+        if (pendingMessages.has(messageId)) {
+            pendingMessages.delete(messageId);
+            replaceMessage(botMessageId, '❌ Có lỗi xảy ra khi gửi câu hỏi. Vui lòng thử lại.', 'bot');
+        }
     } finally {
-        // Re-enable input
+        // Re-enable input and reset processing state
         input.disabled = false;
         input.focus();
+        isProcessing = false;
     }
 }
 
-function addMessage(message, sender, isTyping = false) {
+function addMessage(message, sender, isTyping = false, customId = null) {
     const chatBox = document.getElementById('chatBox');
-    const messageId = 'msg-' + Date.now() + '-' + Math.random();
+    const messageId = customId || `${sender}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `bubble ${sender} ${isTyping ? 'typing' : ''}`;
-    messageDiv.id = messageId;
+    // Process HTML content nếu là bot message
+    const processedMessage = sender === 'bot' ? processHTMLContent(message) : message;
     
-    const senderLabel = sender === 'user' ? '😺  Bạn' : '🤖 Copailit';
+    const bubble = document.createElement('div');
+    bubble.className = `bubble ${sender} ${isTyping ? 'typing' : ''}`;
+    bubble.id = messageId;
     
-    if (isTyping) {
-        messageDiv.innerHTML = `<strong class="${sender}">${senderLabel}:</strong><br>${message}`;
-    } else {
-        messageDiv.innerHTML = `<strong class="${sender}">${senderLabel}:</strong><br>${message}`;
-    }
+    const senderIcon = sender === 'user' ? '👤' : '🤖';
+    const senderName = sender === 'user' ? 'Bạn' : 'Copailit';
     
-    chatBox.appendChild(messageDiv);
+    bubble.innerHTML = `<strong class="${sender}">${senderIcon} ${senderName}:</strong><br>${processedMessage}`;
+    
+    // Smooth animation
+    bubble.style.opacity = '0';
+    bubble.style.transform = 'translateY(20px)';
+    
+    chatBox.appendChild(bubble);
+    
+    // Trigger animation
+    setTimeout(() => {
+        bubble.style.opacity = '1';
+        bubble.style.transform = 'translateY(0)';
+    }, 50);
+    
+    // Auto scroll
     chatBox.scrollTop = chatBox.scrollHeight;
     
     return messageId;
+}
+
+function replaceMessage(messageId, newContent, sender) {
+    const messageElement = document.getElementById(messageId);
+    if (messageElement) {
+        // Process HTML content nếu là bot message
+        const processedContent = sender === 'bot' ? processHTMLContent(newContent) : newContent;
+        
+        const senderIcon = sender === 'user' ? '👤' : '🤖';
+        const senderName = sender === 'user' ? 'Bạn' : 'Copailit';
+        
+        messageElement.className = `bubble ${sender}`; // Remove typing class
+        messageElement.innerHTML = `<strong class="${sender}">${senderIcon} ${senderName}:</strong><br>${processedContent}`;
+        
+        // Scroll to bottom
+        const chatBox = document.getElementById('chatBox');
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 }
 
 function removeMessage(messageId) {
@@ -356,80 +596,109 @@ function updateAIModeIndicator(mode) {
     }
 }
 
-// ====== UTILITY FUNCTIONS ======
+// Cập nhật UI cho conversation active
+function updateActiveConversationUI(activeId) {
+    console.log('[DEBUG] Updating active conversation UI:', activeId);
+    const items = document.querySelectorAll('.conversation-item');
+    
+    items.forEach(item => {
+        if (item.getAttribute('onclick').includes(activeId)) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+// ====== DEBUG FUNCTIONS ======
+
+async function exportChatHistory() {
+    try {
+        console.log('[DEBUG] Starting export chat history...');
+        showMessage('📥 Đang xuất lịch sử chat...', 'info');
+        
+        const response = await fetch('/export-chat');
+        console.log('[DEBUG] Export response status:', response.status);
+          if (response.ok) {
+            console.log('[DEBUG] Export successful, creating download...');
+            // Tạo file download HTML
+            const blob = await response.blob();
+            console.log('[DEBUG] Blob created, size:', blob.size);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `chat_export_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.html`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showMessage('✅ Đã tải xuống lịch sử chat thành công (định dạng HTML)!', 'success');
+        } else {
+            console.log('[DEBUG] Export failed with status:', response.status);
+            const errorData = await response.json();
+            console.log('[DEBUG] Error data:', errorData);
+            showMessage('❌ Không thể export chat: ' + (errorData.error || 'Lỗi không xác định'), 'error');
+        }
+    } catch (error) {
+        console.error('[DEBUG] Error exporting chat:', error);
+        showMessage('❌ Có lỗi xảy ra khi export chat', 'error');
+    }
+}
+
+// ====== HELPER FUNCTIONS ======
 
 function askQuestion(question) {
+    // Automatically fill input and send a question - used by suggestion buttons
     const input = document.getElementById('questionInput');
     input.value = question;
     sendQuestion();
 }
 
-function handleKeyPress(event) {
-    if (event.key === 'Enter') {
-        sendQuestion();
-    }
+// ====== HTML CONTENT PROCESSING ======
+
+function processHTMLContent(htmlContent) {
+    // Post-process HTML content để đảm bảo format đúng
+    let processed = htmlContent;
+    
+    // Fix common markdown leakage
+    processed = processed.replace(/```(\w+)?\n?([\s\S]*?)```/g, function(match, lang, code) {
+        const language = lang || 'text';
+        const escapedCode = escapeHtml(code.trim());
+        return `<div class="code-block">
+            <div class="code-header">${language}</div>
+            <div class="code-content">${escapedCode}</div>
+        </div>`;
+    });
+    
+    // Fix inline code với backticks
+    processed = processed.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+    
+    // Đảm bảo HTML entities được escape đúng trong code blocks
+    processed = processed.replace(/<div class="code-content">([\s\S]*?)<\/div>/g, function(match, content) {
+        const safeContent = content
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+        return `<div class="code-content">${safeContent}</div>`;
+    });
+    
+    // Fix line breaks in formulas
+    processed = processed.replace(/<div class="formula-block">([\s\S]*?)<\/div>/g, function(match, content) {
+        const formattedContent = content.replace(/\n/g, '<br>');
+        return `<div class="formula-block">${formattedContent}</div>`;
+    });
+    
+    return processed;
 }
 
-function showMessage(message, type = 'info') {
-    // Create a temporary message element
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `alert alert-${type}`;
-    messageDiv.style.cssText = `
-        position: fixed; 
-        top: 20px; 
-        right: 20px; 
-        padding: 15px 20px; 
-        border-radius: 8px; 
-        z-index: 1000;
-        animation: slideIn 0.3s ease;
-        max-width: 300px;
-        word-wrap: break-word;
-    `;
-    
-    // Set colors based on type
-    switch(type) {
-        case 'success':
-            messageDiv.style.background = '#d4edda';
-            messageDiv.style.color = '#155724';
-            messageDiv.style.border = '1px solid #c3e6cb';
-            break;
-        case 'error':
-            messageDiv.style.background = '#f8d7da';
-            messageDiv.style.color = '#721c24';
-            messageDiv.style.border = '1px solid #f5c6cb';
-            break;
-        default:
-            messageDiv.style.background = '#d1ecf1';
-            messageDiv.style.color = '#0c5460';
-            messageDiv.style.border = '1px solid #bee5eb';
-    }
-    
-    messageDiv.textContent = message;
-    document.body.appendChild(messageDiv);
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-        if (messageDiv.parentNode) {
-            messageDiv.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.parentNode.removeChild(messageDiv);
-                }
-            }, 300);
-        }
-    }, 3000);
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
-
-// Add CSS animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOut {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
