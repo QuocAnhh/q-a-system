@@ -7,160 +7,146 @@ let pendingMessages = new Map(); // Theo dõi tin nhắn đang xử lý
 let isProcessing = false; // Debouncing để tránh spam requests
 let lastRequestTime = 0; // Tracking để rate limiting
 
-// Khởi tạo chatbot khi trang được tải
+// ====== INITIALIZATION & EVENT LISTENERS ======
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('[DEBUG] Document loaded, initializing app...');
+    
+    // Xử lý lỗi toàn cục để ghi nhật ký
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error('[GLOBAL ERROR]', message, 'at', source, lineno, colno, error);
+        showMessage('❌ Lỗi JavaScript: ' + message, 'error');
+        return false;
+    };
+      // Khởi tạo ứng dụng
     initializeApp();
+    setupEventListeners();
 });
 
 async function initializeApp() {
     try {
-        // Clear everything first
+        console.log('[DEBUG] Initializing app...');
+        
+        // Reset trạng thái
         clearChatBox();
         messageCounter = 0;
         pendingMessages.clear();
         currentConversationId = null;
         
-        // Load conversations
-        await loadConversations();
+        // Luôn load danh sách và lịch sử chat của conv active (nếu có)
+        await loadConversationsAndShowActive();
         
-        // Show welcome message chỉ khi không có conversation nào active
-        const currentConv = conversations.find(c => c.is_current);
-        if (!currentConv) {
-            showWelcomeMessage();
-        } else {
-            // Load messages của conversation hiện tại
-            currentConversationId = currentConv.id;
-            await loadConversationMessages(currentConv.id);
-            updateAIModeIndicator(currentConv.ai_mode);
-        }
-        
-        setupEventListeners();
+        console.log('[DEBUG] App initialized successfully');
     } catch (error) {
-        console.error('Lỗi khởi tạo:', error);
-        showMessage('Có lỗi khi khởi tạo ứng dụng.', 'error');
+        console.error('[ERROR] Initialization error:', error);
+        showMessage('❌ Có lỗi khi khởi tạo ứng dụng: ' + error.message, 'error');
     }
 }
 
-function setupEventListeners() {
-    console.log('[DEBUG] Setting up event listeners');
-    const questionInput = document.getElementById('questionInput');
-    if (!questionInput) {
-        console.error('[ERROR] Question input element not found!');
-        return;
-    }
-    
-    // Remove any existing event listeners first (to avoid duplicates)
-    const newInput = questionInput.cloneNode(true);
-    questionInput.parentNode.replaceChild(newInput, questionInput);
-    
-    // Add event listener to the new input
-    newInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            console.log('[DEBUG] Enter key pressed');
-            e.preventDefault(); // Prevent default form submission
-            sendQuestion();
-        }
-    });
-    
-    console.log('[DEBUG] Event listener for Enter key added');
-}
-
-function showWelcomeMessage() {
-    // Welcome message đã có sẵn trong HTML
-}
-
-// ====== SESSION MANAGEMENT ======
-
-function getOrCreateSessionId() {
-    let sessionId = localStorage.getItem('chatbot_session_id');
-    if (!sessionId) {
-        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('chatbot_session_id', sessionId);
-        console.log('[DEBUG] Created new session ID:', sessionId);
-    } else {
-        console.log('[DEBUG] Using existing session ID:', sessionId);
-    }
-    return sessionId;
-}
-
-// Gửi session ID với mỗi request
-function fetchWithSession(url, options = {}) {
-    const sessionId = getOrCreateSessionId();
-    
-    // Thêm session ID vào headers
-    if (!options.headers) {
-        options.headers = {};
-    }
-    options.headers['X-Session-ID'] = sessionId;
-    
-    // Đảm bảo credentials được gửi
-    options.credentials = 'include';
-    
-    return fetch(url, options);
-}
-
-// ====== CONVERSATION MANAGEMENT ======
-
-async function loadConversations() {
+// Load and show a conversation (including messages)
+async function loadAndShowConversation(conversationId) {
     try {
-        console.log('[DEBUG] Loading conversations...');
-        const response = await fetchWithSession('/conversations');
+        const response = await fetch(`/conversations/${conversationId}`, { credentials: 'same-origin' });
         const data = await response.json();
-        
-        console.log('[DEBUG] Conversations response:', data);
-        
         if (response.ok) {
-            conversations = data.conversations || [];
-            console.log('[DEBUG] Total conversations loaded:', conversations.length);
-            
-            // Luôn render conversations (kể cả khi rỗng)
-            renderConversations();
-            
-            // Tìm và set current conversation
-            const currentConv = conversations.find(c => c.is_current);
-            console.log('[DEBUG] Current conversation:', currentConv);
-            
-            if (currentConv) {
-                // Chỉ set currentConversationId nếu chưa có hoặc khác
-                if (currentConversationId !== currentConv.id) {
-                    currentConversationId = currentConv.id;
-                    updateAIModeIndicator(currentConv.ai_mode);
-                    console.log('[DEBUG] Set current conversation ID:', currentConversationId);
-                }
-            } else {
-                // Không có conversation nào active
-                currentConversationId = null;
-                updateAIModeIndicator(null);
-                console.log('[DEBUG] No active conversation found');
-            }
+            const conversation = data.conversation;
+            currentConversationId = conversation.id;
+            updateAIModeIndicator(conversation.ai_mode);
+            clearChatBox();
+            messageCounter = 0;
+            pendingMessages.clear();
+            (conversation.messages || []).forEach((message, index) => {
+                const userMsgId = `user-loaded-${conversationId}-${index}`;
+                const botMsgId = `bot-loaded-${conversationId}-${index}`;
+                addMessage(message.question, 'user', false, userMsgId);
+                addMessage(message.answer, 'bot', false, botMsgId);
+            });
+            messageCounter = (conversation.messages || []).length * 2 + 1000;
         } else {
-            console.error('[DEBUG] Failed to load conversations:', data);
+            clearChatBox();
+            showWelcomeMessage();
         }
     } catch (error) {
-        console.error('Lỗi khi tải danh sách cuộc hội thoại:', error);
+        clearChatBox();
+        showWelcomeMessage();
+    }
+}
+
+// Always load conversations and show the active one
+async function loadConversationsAndShowActive() {
+    try {
+        console.log('[DEBUG] Loading conversations and showing active...');
+        const response = await fetch('/conversations', { 
+            credentials: 'same-origin',
+            cache: 'no-cache' // Đảm bảo không cache kết quả
+        });
+        
+        if (!response.ok) {
+            console.error('[ERROR] Failed to load conversations:', response.status);
+            clearChatBox();
+            showWelcomeMessage();
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('[DEBUG] Received conversations data:', data);
+        
+        conversations = data.conversations || [];
+        renderConversations();
+        
+        if (conversations.length === 0) {
+            console.log('[DEBUG] No conversations found, clearing chatbox');
+            clearChatBox();
+            showWelcomeMessage();
+            return;
+        }        // Tìm hội thoại đang active - ưu tiên is_current, nếu không có thì lấy conversation đầu tiên
+        const currentConv = conversations.find(c => c.is_current || c.is_active) || conversations[0];
+        if (currentConv) {
+            console.log('[DEBUG] Found active conversation:', currentConv.id);
+            // Đồng bộ currentConversationId với conversation active từ server
+            currentConversationId = currentConv.id;
+            await loadAndShowConversation(currentConv.id);
+        } else {
+            console.log('[DEBUG] No active conversation found');
+            currentConversationId = null;
+            clearChatBox();
+            showWelcomeMessage();
+        }
+    } catch (error) {
+        console.error('[ERROR] Error in loadConversationsAndShowActive:', error);
+        clearChatBox();
+        showWelcomeMessage();
     }
 }
 
 function renderConversations() {
-    console.log('[DEBUG] Rendering conversations, count:', conversations.length);
+    console.log('[DEBUG] Rendering conversations:', conversations.length);
     const listElement = document.getElementById('conversationList');
     
-    if (conversations.length === 0) {
-        console.log('[DEBUG] No conversations to render');
-        listElement.innerHTML = '<p style="text-align: center; color: #666; font-style: italic;">Chưa có cuộc hội thoại nào</p>';
+    if (!listElement) {
+        console.error('[ERROR] Conversation list element not found');
         return;
     }
     
-    console.log('[DEBUG] Rendering', conversations.length, 'conversations');
+    if (conversations.length === 0) {
+        listElement.innerHTML = '<p style="text-align: center; color: #666; font-style: italic;">Chưa có cuộc hội thoại nào</p>';
+        // Disable export button if no conversation
+        const exportBtn = document.getElementById('exportButton');
+        if (exportBtn) exportBtn.disabled = true;
+        return;
+    }
+    
+    // Enable export button if conversations exist
+    const exportBtn = document.getElementById('exportButton');
+    if (exportBtn) exportBtn.disabled = false;
+      // Render conversation items
     listElement.innerHTML = conversations.map(conv => {
         const date = new Date(conv.updated_at).toLocaleDateString('vi-VN');
         const time = new Date(conv.updated_at).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'});
-        
-        // Check if this is the current conversation
-        const isActive = conv.is_current || conv.id === currentConversationId;
-        
+        // Logic xác định active: ưu tiên currentConversationId, sau đó is_current từ server
+        const isActive = (currentConversationId && conv.id === currentConversationId) || 
+                         (!currentConversationId && (conv.is_current || conv.is_active));
         return `
-            <div class="conversation-item ${isActive ? 'active' : ''}" onclick="switchConversation('${conv.id}')">
+            <div class="conversation-item ${isActive ? 'active' : ''}" data-convid="${conv.id}">
                 <div class="conversation-title">${conv.title}</div>
                 <div class="conversation-meta">
                     ${conv.message_count} tin nhắn • ${date} ${time}
@@ -168,26 +154,149 @@ function renderConversations() {
                 </div>
                 <div class="conversation-actions">
                     <small>${isActive ? '• Đang active' : ''}</small>
-                    <button class="delete-btn" onclick="deleteConversation('${conv.id}', event)">Xóa</button>
+                    <button class="delete-btn" data-deleteid="${conv.id}">Xóa</button>
                 </div>
             </div>
         `;
     }).join('');
+    
+    // Attach event listeners to conversation items and delete buttons
+    attachConversationEventListeners();
 }
 
-async function updateConversationMetadata() {
-    try {
-        const response = await fetch('/conversations');
-        const data = await response.json();
+// Đảm bảo chỉ gắn event listener cho input và nút gửi một lần duy nhất
+function setupEventListeners() {
+    console.log('[DEBUG] Setting up event listeners');
+    
+    // Input field và nút gửi
+    const questionInput = document.getElementById('questionInput');
+    if (questionInput) {
+        questionInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey && !questionInput.disabled) {
+                e.preventDefault();
+                sendQuestion();
+            }
+        });
+    } else {
+        console.error('[ERROR] Question input element not found');
+    }
+    
+    const sendBtn = document.querySelector('.send-btn');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendQuestion);
+    } else {
+        console.error('[ERROR] Send button not found');
+    }
+    
+    // Nút tạo cuộc hội thoại mới
+    const newChatBtn = document.getElementById('newChatButton');
+    if (newChatBtn) {
+        console.log('[DEBUG] Attaching event listener to newChatButton');
+        newChatBtn.addEventListener('click', function() {
+            console.log('[DEBUG] New chat button clicked');
+            createNewConversation();
+        });
+    } else {
+        console.error('[ERROR] New chat button not found');
+    }
+    
+    // Nút export chat
+    const exportBtn = document.getElementById('exportButton');
+    if (exportBtn) {
+        console.log('[DEBUG] Attaching event listener to exportButton');
+        exportBtn.addEventListener('click', function() {
+            console.log('[DEBUG] Export button clicked');
+            exportChatHistory();
+        });
+    } else {
+        console.error('[ERROR] Export button not found');
+    }
+}
+
+// Attach event listeners to conversation items
+function attachConversationEventListeners() {
+    console.log('[DEBUG] Attaching event listeners to conversation items');
+    // Đính kèm event listeners cho các mục hội thoại
+    document.querySelectorAll('.conversation-item').forEach(item => {
+        const convId = item.getAttribute('data-convid');
         
-        if (response.ok) {
-            // Chỉ cập nhật conversations array mà KHÔNG thay đổi currentConversationId
-            // hoặc reload messages
-            conversations = data.conversations;
+        // Add click event listener for switching conversations
+        item.addEventListener('click', (e) => {
+            // Avoid triggering switch when clicking delete button
+            if (e.target.classList.contains('delete-btn')) return;
+            console.log('[DEBUG] Conversation item clicked:', convId);
+            switchConversation(convId);
+        });
+        
+        // Add click event listener for delete buttons
+        const delBtn = item.querySelector('.delete-btn');
+        if (delBtn) {
+            delBtn.addEventListener('click', (e) => {
+                console.log('[DEBUG] Delete button clicked for:', convId);
+                deleteConversation(convId, e);
+            });
+        }
+    });
+}
+
+function showWelcomeMessage() {
+    // Tạo tin nhắn chào mừng trong chatbox nếu chưa có
+    const chatBox = document.getElementById('chatBox');
+    if (!chatBox) return;
+    
+    // Nếu chatbox đã trống, thêm tin nhắn chào mừng
+    if (chatBox.children.length === 0) {
+        const welcomeMessage = document.createElement('div');
+        welcomeMessage.className = 'bubble bot';
+        welcomeMessage.innerHTML = `
+            <strong class="bot">🤖 Copailit:</strong><br>
+            Xin chào! Tôi là Copailit AI. Tôi có thể giúp bạn!
+        `;
+        chatBox.appendChild(welcomeMessage);
+    }
+}
+
+// ====== CONVERSATION MANAGEMENT ======
+
+async function loadConversations(loadMessages = false) {
+    try {
+        console.log('[DEBUG] Loading conversations...');
+        const response = await fetch('/conversations', { credentials: 'same-origin' });
+        const data = await response.json();
+        console.log('[DEBUG] Conversations response:', data);        if (response.ok) {
+            conversations = data.conversations || [];
+            
+            if (conversations.length === 0) {
+                console.log('[DEBUG] No conversations found');
+                currentConversationId = null;
+                renderConversations();
+                clearChatBox();
+                showWelcomeMessage();
+                return;
+            }            // Luôn tìm conv đang active - ưu tiên is_current, nếu không có thì is_active
+            const currentConv = conversations.find(c => c.is_current || c.is_active);
+            if (currentConv) {
+                currentConversationId = currentConv.id;
+                console.log('[DEBUG] Synced currentConversationId:', currentConversationId);
+                updateAIModeIndicator(currentConv.ai_mode);
+                if (loadMessages) {
+                    await loadAndShowConversation(currentConv.id);
+                }
+            } else {
+                currentConversationId = null;
+                clearChatBox();
+                showWelcomeMessage();
+            }
+            
+            // Re-render conversations với currentConversationId đã được sync
             renderConversations();
+        } else {
+            console.error('[ERROR] Failed to load conversations:', data);
+            showMessage('❌ Không thể tải danh sách cuộc hội thoại: ' + (data.error || 'Lỗi không xác định'), 'error');
         }
     } catch (error) {
-        console.error('Lỗi khi cập nhật metadata cuộc hội thoại:', error);
+        console.error('Lỗi khi tải danh sách cuộc hội thoại:', error);
+        showMessage('❌ Có lỗi xảy ra khi tải danh sách cuộc hội thoại', 'error');
     }
 }
 
@@ -207,205 +316,128 @@ function getAIModeDisplay(mode) {
 
 async function createNewConversation() {
     try {
-        console.log('[DEBUG] Creating new conversation...');
+        showMessage('🔄 Đang tạo cuộc hội thoại mới...', 'info');
         
-        const response = await fetchWithSession('/conversations/new', {
+        const response = await fetch('/conversations/new', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin'
         });
         
-        const data = await response.json();
-        
-        if (response.ok) {
-            console.log('[DEBUG] New conversation created:', data.conversation);
-            
-            // Update current conversation ID
-            currentConversationId = data.conversation.id;
-            
-            // Reset chat state
-            clearChatBox();
-            messageCounter = 0;
-            pendingMessages.clear();
-            
-            // Update UI
-            showWelcomeMessage();
-            updateAIModeIndicator(data.conversation.ai_mode);
-            
-            // Reload conversations list để hiển thị conversation mới
-            await loadConversations();
-            
-            // Update active UI ngay lập tức
-            updateActiveConversationUI(currentConversationId);
-            
-            showMessage('✅ Đã tạo cuộc hội thoại mới!', 'success');
-        } else {
-            console.error('[DEBUG] Failed to create conversation:', data);
-            showMessage('❌ Không thể tạo cuộc hội thoại mới: ' + data.error, 'error');
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('[ERROR] Failed to create new conversation:', errorData);
+            showMessage('❌ Không thể tạo cuộc hội thoại mới: ' + (errorData.error || 'Lỗi không xác định'), 'error');
+            return;
         }
+        
+        const data = await response.json();
+        console.log('[DEBUG] New conversation created:', data);
+        
+        // Explicitly clear chatbox
+        clearChatBox();
+          // Update conversation list and show active one
+        conversations = data.conversations || [];
+        
+        // Find the newly created conversation (should be active)
+        const newConv = data.conversation;
+        if (newConv) {
+            currentConversationId = newConv.id;
+            console.log('[DEBUG] Set currentConversationId to new conversation:', currentConversationId);
+            updateAIModeIndicator(newConv.ai_mode || null);
+            showWelcomeMessage();
+        }
+        
+        // Re-render conversations với currentConversationId đã được set
+        renderConversations();
+        
+        showMessage('✅ Đã tạo cuộc hội thoại mới! Context đã được reset.', 'success');
     } catch (error) {
-        console.error('Lỗi khi tạo cuộc hội thoại mới:', error);
-        showMessage('❌ Có lỗi xảy ra khi tạo cuộc hội thoại mới', 'error');
+        console.error('Error creating new conversation:', error);
+        showMessage('❌ Có lỗi xảy ra khi tạo cuộc hội thoại mới: ' + error.message, 'error');
     }
 }
 
 async function switchConversation(conversationId) {
     try {
-        // Tránh multiple clicks
         if (currentConversationId === conversationId) {
+            console.log('[DEBUG] Already on this conversation:', conversationId);
             return;
         }
         
         console.log('[DEBUG] Switching to conversation:', conversationId);
-          const response = await fetchWithSession(`/conversations/${conversationId}/switch`, {
+        const response = await fetch(`/conversations/${conversationId}/switch`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin'
         });
-        
         const data = await response.json();
-        
         if (response.ok) {
-            // Update current conversation ID NGAY LẬP TỨC
+            // Cập nhật currentConversationId ngay lập tức
             currentConversationId = conversationId;
+            console.log('[DEBUG] Updated currentConversationId to:', currentConversationId);
             
-            // Update UI ngay để user thấy selection
-            updateActiveConversationUI(conversationId);
+            // Re-render conversation list để hiển thị màu đúng
+            renderConversations();
             
-            // Clear và load messages
-            clearChatBox();
-            await loadConversationMessages(conversationId);
-            
-            // Update AI mode
+            // Load conversation content
+            await loadAndShowConversation(conversationId);
             updateAIModeIndicator(data.conversation.ai_mode);
-            
-            console.log('[DEBUG] Successfully switched to conversation:', conversationId);
-            
         } else {
             showMessage('❌ Không thể chuyển cuộc hội thoại: ' + data.error, 'error');
         }
     } catch (error) {
-        console.error('Lỗi khi chuyển cuộc hội thoại:', error);
+        console.error('Error switching conversation:', error);
         showMessage('❌ Có lỗi xảy ra khi chuyển cuộc hội thoại', 'error');
     }
 }
 
 async function deleteConversation(conversationId, event) {
-    event.stopPropagation(); // Prevent triggering switch conversation
-    
-    if (!confirm('Bạn có chắc chắn muốn xóa cuộc hội thoại này?')) {
-        return;
-    }
-    
     try {
         console.log('[DEBUG] Deleting conversation:', conversationId);
         
-        // Immediately remove the conversation from UI for better UX
-        const conversationElement = event.target.closest('.conversation-item');
-        if (conversationElement) {
-            // Thêm hiệu ứng mờ dần trước khi xóa
-            conversationElement.style.opacity = '0.5';
-            conversationElement.style.pointerEvents = 'none'; // Prevent clicks during deletion
+        // Ngăn chặn sự kiện click lan truyền lên thẻ cha
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
         }
         
-        // Send delete request to API
-        const response = await fetchWithSession(`/conversations/${conversationId}`, {
-            method: 'DELETE'
+        if (!confirm('Bạn có chắc muốn xóa cuộc hội thoại này không?')) {
+            return;
+        }
+        
+        showMessage('🔄 Đang xóa cuộc hội thoại...', 'info');
+        const response = await fetch(`/conversations/${conversationId}`, {
+            method: 'DELETE',
+            credentials: 'same-origin'
         });
         
-        const data = await response.json();
-        
-        if (response.ok) {
-            console.log('[DEBUG] Conversation deleted successfully');
-            
-            // Remove from local array immediately
-            conversations = conversations.filter(conv => conv.id !== conversationId);
-            
-            // If the deleted conversation was the current one, reset UI
-            if (conversationId === currentConversationId) {
-                clearChatBox();
-                showWelcomeMessage();
-                currentConversationId = null;
-                updateAIModeIndicator(null);
-            }
-            
-            // Remove element from DOM completely if it still exists
-            if (conversationElement && conversationElement.parentNode) {
-                conversationElement.parentNode.removeChild(conversationElement);
-            }
-            
-            // Reload conversations from API to ensure sync
-            await loadConversations();
-            
-            showMessage('✅ Đã xóa cuộc hội thoại!', 'success');
-        } else {
-            // Restore UI if deletion failed
-            if (conversationElement) {
-                conversationElement.style.opacity = '1';
-                conversationElement.style.pointerEvents = 'auto';
-            }
-            
-            showMessage('❌ Không thể xóa cuộc hội thoại: ' + data.error, 'error');
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('[ERROR] Failed to delete conversation:', errorData);
+            showMessage('❌ Không thể xóa cuộc hội thoại: ' + (errorData.error || 'Lỗi không xác định'), 'error');
+            return;
         }
-    } catch (error) {
-        console.error('Lỗi khi xóa cuộc hội thoại:', error);
-        showMessage('❌ Có lỗi xảy ra khi xóa cuộc hội thoại', 'error');
-    }
-}
-
-async function loadConversationMessages(conversationId) {
-    try {
-        const response = await fetchWithSession(`/conversations/${conversationId}`);
-        const data = await response.json();
         
-        if (response.ok) {
-            const conversation = data.conversation;
-            
-            // QUAN TRỌNG: Clear chatbox hoàn toàn trước khi load
+        const data = await response.json();
+        console.log('[DEBUG] Conversation deleted successfully:', data);
+        
+        // Nếu xóa conversation hiện tại, clear chatbox
+        if (conversationId === currentConversationId) {
             clearChatBox();
-            
-            // Reset message counter và pending messages
-            messageCounter = 0;
-            pendingMessages.clear();
-            
-            // Render messages theo đúng thứ tự
-            conversation.messages.forEach((message, index) => {
-                const userMsgId = `user-loaded-${conversationId}-${index}`;
-                const botMsgId = `bot-loaded-${conversationId}-${index}`;
-                
-                addMessage(message.question, 'user', false, userMsgId);
-                addMessage(message.answer, 'bot', false, botMsgId);
-            });
-            
-            // Set counter for new messages (tránh conflict với loaded messages)
-            messageCounter = conversation.messages.length * 2 + 1000;
-            
-            // Update AI mode
-            updateAIModeIndicator(conversation.ai_mode);
-            
-        } else {
-            showMessage('❌ Không thể tải tin nhắn: ' + data.error, 'error');
+            currentConversationId = null;
+            showWelcomeMessage();
         }
+        
+        // Cập nhật lại danh sách và hiển thị conversation active (nếu còn)
+        conversations = data.conversations || [];
+        renderConversations();
+        
+        showMessage('✅ Đã xóa cuộc hội thoại!', 'success');
     } catch (error) {
-        console.error('Lỗi khi tải tin nhắn:', error);
-        showMessage('❌ Có lỗi xảy ra khi tải tin nhắn', 'error');
+        console.error('[ERROR] Error deleting conversation:', error);
+        showMessage('❌ Có lỗi xảy ra khi xóa cuộc hội thoại: ' + error.message, 'error');
     }
-}
-
-function clearChatBox() {
-    const chatBox = document.getElementById('chatBox');
-    
-    // Clear hoàn toàn innerHTML
-    chatBox.innerHTML = '';
-    
-    // Reset các state variables
-    messageCounter = 0;
-    pendingMessages.clear();
-    
-    // Force DOM to re-render
-    chatBox.offsetHeight;
 }
 
 // ====== CHAT FUNCTIONS ======
@@ -458,10 +490,9 @@ async function sendQuestion() {
     try {
         const response = await fetch('/chat', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ question: question })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: question }),
+            credentials: 'same-origin'
         });
         
         const data = await response.json();
@@ -478,7 +509,8 @@ async function sendQuestion() {
         if (response.ok) {
             // Replace typing indicator với response thực tế
             replaceMessage(botMessageId, data.answer, 'bot');
-              // Update suggestions
+            
+            // Update suggestions
             updateSuggestions(data.suggestions || []);
             
             // Update AI mode indicator
@@ -588,6 +620,11 @@ function updateAIModeIndicator(mode) {
     const indicator = document.getElementById('aiModeIndicator');
     const modeSpan = document.getElementById('currentMode');
     
+    if (!indicator || !modeSpan) {
+        console.warn('[WARNING] AI mode indicator elements not found in the DOM');
+        return;
+    }
+    
     if (mode) {
         modeSpan.textContent = getAIModeDisplay(mode);
         indicator.style.display = 'block';
@@ -596,54 +633,61 @@ function updateAIModeIndicator(mode) {
     }
 }
 
-// Cập nhật UI cho conversation active
-function updateActiveConversationUI(activeId) {
-    console.log('[DEBUG] Updating active conversation UI:', activeId);
-    const items = document.querySelectorAll('.conversation-item');
-    
-    items.forEach(item => {
-        if (item.getAttribute('onclick').includes(activeId)) {
-            item.classList.add('active');
-        } else {
-            item.classList.remove('active');
-        }
-    });
-}
-
 // ====== DEBUG FUNCTIONS ======
 
 async function exportChatHistory() {
     try {
-        console.log('[DEBUG] Starting export chat history...');
+        console.log('[DEBUG] Starting chat export...');
         showMessage('📥 Đang xuất lịch sử chat...', 'info');
         
-        const response = await fetch('/export-chat');
-        console.log('[DEBUG] Export response status:', response.status);
-          if (response.ok) {
-            console.log('[DEBUG] Export successful, creating download...');
-            // Tạo file download HTML
-            const blob = await response.blob();
-            console.log('[DEBUG] Blob created, size:', blob.size);
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `chat_export_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.html`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            showMessage('✅ Đã tải xuống lịch sử chat thành công (định dạng HTML)!', 'success');
-        } else {
-            console.log('[DEBUG] Export failed with status:', response.status);
-            const errorData = await response.json();
-            console.log('[DEBUG] Error data:', errorData);
-            showMessage('❌ Không thể export chat: ' + (errorData.error || 'Lỗi không xác định'), 'error');
+        // Kiểm tra nếu không có hội thoại
+        if (!conversations || conversations.length === 0) {
+            showMessage('❌ Không có cuộc hội thoại nào để xuất', 'error');
+            return;
         }
+        
+        const response = await fetch('/export-chat', {
+            credentials: 'same-origin'
+        });
+        console.log('[DEBUG] Export response status:', response.status);
+        
+        if (!response.ok) {
+            let errorMessage = 'Lỗi không xác định';
+            try {
+                const errorData = await response.json();
+                console.error('[ERROR] Export failed:', errorData);
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                console.error('Could not parse error response:', e);
+            }
+            
+            showMessage('❌ Không thể export chat: ' + errorMessage, 'error');
+            return;
+        }
+        
+        // Tạo file download HTML
+        const blob = await response.blob();
+        console.log('[DEBUG] Export blob size:', blob.size);
+        
+        if (blob.size === 0) {
+            showMessage('❌ Xuất file thất bại: file trống', 'error');
+            return;
+        }
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `chat_export_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.html`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showMessage('✅ Đã tải xuống lịch sử chat thành công (định dạng HTML)!', 'success');
     } catch (error) {
-        console.error('[DEBUG] Error exporting chat:', error);
-        showMessage('❌ Có lỗi xảy ra khi export chat', 'error');
+        console.error('Error exporting chat:', error);
+        showMessage('❌ Có lỗi xảy ra khi export chat: ' + error.message, 'error');
     }
 }
 
@@ -654,6 +698,53 @@ function askQuestion(question) {
     const input = document.getElementById('questionInput');
     input.value = question;
     sendQuestion();
+}
+
+function clearChatBox() {
+    const chatBox = document.getElementById('chatBox');
+    if (chatBox) {
+        chatBox.innerHTML = '';
+    }
+    
+    // Clear suggestions
+    const suggestionsContainer = document.getElementById('suggestions');
+    if (suggestionsContainer) {
+        suggestionsContainer.innerHTML = '';
+    }
+    
+    // Reset AI mode indicator
+    updateAIModeIndicator(null);
+}
+
+function showMessage(message, type = 'info') {
+    const messageArea = document.getElementById('messageArea');
+    if (!messageArea) return;
+    
+    const messageElement = document.createElement('div');
+    messageElement.className = `message-alert ${type}`;
+    messageElement.textContent = message;
+    
+    messageArea.appendChild(messageElement);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        messageElement.classList.add('fade-out');
+        setTimeout(() => messageElement.remove(), 500);
+    }, 5000);
+}
+
+// Hàm cập nhật metadata của conversation list mà không reload messages
+async function updateConversationMetadata() {
+    try {
+        const response = await fetch('/conversations', { credentials: 'same-origin' });
+        const data = await response.json();
+        if (response.ok) {
+            conversations = data.conversations || [];
+            renderConversations();
+        }
+    } catch (error) {
+        console.error('Error updating conversation metadata:', error);
+    }
 }
 
 // ====== HTML CONTENT PROCESSING ======

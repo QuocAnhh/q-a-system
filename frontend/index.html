@@ -9,13 +9,12 @@
 <body>
     <div class="main-layout">        <!-- Sidebar for conversation management -->
         <div class="sidebar">
-            <h3>💬 Cuộc hội thoại</h3>
-            <button class="new-chat-btn" onclick="createNewConversation()">
+            <h3>💬 Cuộc hội thoại</h3>            <button class="new-chat-btn" id="newChatButton">
                  + Cuộc hội thoại mới
             </button>
               <!-- Debug tools -->
             <div class="debug-tools">
-                <button class="debug-btn" onclick="exportChatHistory()" title="Tải xuống lịch sử chat để debug">
+                <button class="debug-btn" id="exportButton" title="Tải xuống lịch sử chat để debug">
                     📥 Export Chat
                 </button>
             </div>
@@ -31,6 +30,9 @@
             <div class="header">
                 <h1>Copailit AI</h1>
                 <p>Trợ lý thông minh hỗ trợ học tập và quản lý thời gian</p>
+                <div id="aiModeIndicator" class="ai-mode-indicator" style="display: none;">
+                    Mode: <span id="currentMode">General</span>
+                </div>
             </div>
 
             <div class="chat-box" id="chatBox">
@@ -46,10 +48,11 @@
                 <div class="suggestion" onclick="askQuestion('Cách học Python')">🐍 Học Python</div>
                 <div class="suggestion" onclick="askQuestion('Mẹo quản lý thời gian')">⏰ Quản lý thời gian</div>
             </div>      
-              
-            <div class="input-container">
+            
+            <div id="messageArea" class="message-area"></div>
+                <div class="input-container">
                 <input type="text" id="questionInput" placeholder="Nhập câu hỏi của bạn...">
-                <button class="send-btn" onclick="sendQuestion()">Gửi</button>
+                <button class="send-btn" id="sendButton">Gửi</button>
             </div>
         </div>
     </div>
