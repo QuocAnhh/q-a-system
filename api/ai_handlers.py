@@ -71,6 +71,21 @@ def handle_ai_question(question):
     
     if any(keyword in q for keyword in ['thời gian', 'kế hoạch', 'lịch trình', 'quản lý']):
         return handle_time_management_questions(question)
+
+    # NEW: Đại số tuyến tính
+    if any(keyword in q for keyword in ['đại số tuyến tính', 'linear algebra', 'ma trận', 'matrix', 'vector', 'không gian vector', 'hệ phương trình tuyến tính']):
+        print(f"[DEBUG] Detected linear algebra keywords, routing to handle_linear_algebra_questions")
+        return handle_linear_algebra_questions(question)
+
+    # NEW: Xác suất thống kê
+    if any(keyword in q for keyword in ['xác suất thống kê', 'probability', 'statistics', 'phân phối', 'distribution', 'kiểm định giả thuyết', 'hypothesis testing', 'hồi quy']):
+        print(f"[DEBUG] Detected probability statistics keywords, routing to handle_probability_statistics_questions")
+        return handle_probability_statistics_questions(question)
+
+    # NEW: Giải tích
+    if any(keyword in q for keyword in ['giải tích', 'calculus', 'vi phân', 'differential', 'tích phân', 'integral', 'đạo hàm', 'derivative', 'giới hạn', 'limit']):
+        print(f"[DEBUG] Detected calculus keywords, routing to handle_calculus_questions")
+        return handle_calculus_questions(question)
     
     # General fallback với prompt đơn giản
     try:        
@@ -403,6 +418,21 @@ def handle_ai_question_with_context(question, context_messages=None):
     
     if any(keyword in q for keyword in ['thời gian', 'kế hoạch', 'lịch trình', 'quản lý']):
         return handle_time_management_questions_with_context(question, context_messages)
+
+    # NEW: Đại số tuyến tính
+    if any(keyword in q for keyword in ['đại số tuyến tính', 'linear algebra', 'ma trận', 'matrix', 'vector', 'không gian vector', 'hệ phương trình tuyến tính']):
+        print(f"[DEBUG] Detected linear algebra keywords, routing to handle_linear_algebra_questions")
+        return handle_linear_algebra_questions(question)
+
+    # NEW: Xác suất thống kê
+    if any(keyword in q for keyword in ['xác suất thống kê', 'probability', 'statistics', 'phân phối', 'distribution', 'kiểm định giả thuyết', 'hypothesis testing', 'hồi quy']):
+        print(f"[DEBUG] Detected probability statistics keywords, routing to handle_probability_statistics_questions")
+        return handle_probability_statistics_questions(question)
+
+    # NEW: Giải tích
+    if any(keyword in q for keyword in ['giải tích', 'calculus', 'vi phân', 'differential', 'tích phân', 'integral', 'đạo hàm', 'derivative', 'giới hạn', 'limit']):
+        print(f"[DEBUG] Detected calculus keywords, routing to handle_calculus_questions")
+        return handle_calculus_questions(question)
     
     # General fallback với context
     return handle_general_questions_with_context(question, context_messages)
@@ -445,13 +475,16 @@ def call_openai_api_with_context(question, system_prompt, subject, context_messa
 def handle_math_questions_with_context(question, context_messages=None):
     """Xử lý câu hỏi về Toán học với context"""
     try:
-        ai_response = call_openai_api_with_context(question, SYSTEM_PROMPTS['math'], "Toán học", context_messages)
+        # Ensure SYSTEM_PROMPTS is defined and accessible, or handle potential KeyError
+        math_prompt = SYSTEM_PROMPTS.get('math', "Bạn là một trợ lý Toán học AI. Hãy trả lời các câu hỏi một cách chính xác và chi tiết, tập trung vào kiến thức Toán học phổ thông và đại học.") # Default prompt
+        ai_response = call_openai_api_with_context(question, math_prompt, "Toán học", context_messages)
         return {
             "answer": ai_response,
             "suggestions": ["Hỏi thêm về Toán", "Bài tập thực hành", "Ví dụ cụ thể", "Chuyển sang môn khác"],
             "ai_mode": "math"
         }
     except Exception as e:
+        print(f"[ERROR] Math AI with context error: {e}")
         return handle_math_questions(question)  # Fallback to non-context version
 
 
@@ -536,13 +569,16 @@ def handle_study_questions_with_context(question, context_messages=None):
 def handle_time_management_questions_with_context(question, context_messages=None):
     """Xử lý câu hỏi về quản lý thời gian với context"""
     try:
-        ai_response = call_openai_api_with_context(question, SYSTEM_PROMPTS['study'], "Quản lý thời gian", context_messages)
+        # Ensure SYSTEM_PROMPTS is defined and accessible
+        study_prompt = SYSTEM_PROMPTS.get('study', "Bạn là một trợ lý AI về phương pháp học tập và quản lý thời gian. Hãy đưa ra lời khuyên thực tế và hữu ích.") # Default
+        ai_response = call_openai_api_with_context(question, study_prompt, "Quản lý thời gian", context_messages)
         return {
             "answer": ai_response,
             "suggestions": ["Lập kế hoạch", "Ưu tiên công việc", "Công cụ quản lý", "Chuyển sang môn khác"],
-            "ai_mode": "study"
+            "ai_mode": "study" # Consider if "time_management" mode is needed or if "study" is fine
         }
     except Exception as e:
+        print(f"[ERROR] Time management AI with context error: {e}")
         return handle_time_management_questions(question)  # Fallback
 
 
@@ -561,3 +597,130 @@ def handle_general_questions_with_context(question, context_messages=None):
         }
     except Exception as e:
         return handle_ai_question(question)  # Fallback to original function
+
+
+# START OF NEW HANDLERS
+
+def handle_linear_algebra_questions(question):
+    """Xử lý câu hỏi về Đại số tuyến tính"""
+    print(f"[DEBUG] handle_linear_algebra_questions called with: {question}")
+    try:
+        # Ensure SYSTEM_PROMPTS is defined and accessible
+        prompt = SYSTEM_PROMPTS.get('linear_algebra', "Bạn là một trợ lý AI chuyên về Đại số tuyến tính. Hãy giải thích các khái niệm, giải bài tập và cung cấp ví dụ minh họa chi tiết liên quan đến ma trận, vector, không gian vector, hệ phương trình tuyến tính, giá trị riêng, vector riêng, và các ứng dụng của Đại số tuyến tính. Tập trung vào kiến thức bậc đại học.")
+        ai_response = call_openai_api(question, prompt, "Đại số tuyến tính")
+        return {
+            "answer": ai_response,
+            "suggestions": ["Khái niệm ma trận", "Không gian vector", "Giải hệ phương trình tuyến tính", "Giá trị riêng, vector riêng"],
+            "ai_mode": "linear_algebra"
+        }
+    except Exception as e:
+        print(f"[ERROR] Linear Algebra AI error: {e}")
+        return {
+            "answer": """📈 <strong>Đại số tuyến tính</strong><br><br>
+            Xin lỗi, có lỗi kết nối với AI chuyên gia Đại số tuyến tính. Một số chủ đề bạn có thể quan tâm:<br><br>
+            • <strong>Ma trận:</strong> Các phép toán, định thức, ma trận nghịch đảo.<br>
+            • <strong>Vector:</strong> Không gian vector, tổ hợp tuyến tính, độc lập tuyến tính.<br>
+            • <strong>Hệ phương trình tuyến tính:</strong> Phương pháp Gauss, Cramer.<br>
+            • <strong>Giá trị riêng & Vector riêng.</strong><br><br>
+            Vui lòng thử lại hoặc đặt câu hỏi cụ thể!""",
+            "suggestions": ["Giải thích định thức", "Không gian con là gì?", "Bài tập về ma trận", "Ứng dụng của ĐSTT"],
+            "ai_mode": "linear_algebra"
+        }
+
+def handle_probability_statistics_questions(question):
+    """Xử lý câu hỏi về Xác suất thống kê"""
+    print(f"[DEBUG] handle_probability_statistics_questions called with: {question}")
+    try:
+        prompt = SYSTEM_PROMPTS.get('probability_statistics', "Bạn là một trợ lý AI chuyên về Xác suất thống kê. Hãy giải thích các khái niệm, công thức, giải bài tập và cung cấp ví dụ minh họa chi tiết liên quan đến xác suất, biến ngẫu nhiên, các phân phối xác suất (binomial, poisson, normal,...), luật số lớn, định lý giới hạn trung tâm, ước lượng tham số, kiểm định giả thuyết, phân tích hồi quy. Tập trung vào kiến thức bậc đại học.")
+        ai_response = call_openai_api(question, prompt, "Xác suất thống kê")
+        return {
+            "answer": ai_response,
+            "suggestions": ["Phân phối chuẩn", "Kiểm định giả thuyết", "Xác suất có điều kiện", "Hồi quy tuyến tính"],
+            "ai_mode": "probability_statistics"
+        }
+    except Exception as e:
+        print(f"[ERROR] Probability Statistics AI error: {e}")
+        return {
+            "answer": """📊 <strong>Xác suất thống kê</strong><br><br>
+            Xin lỗi, có lỗi kết nối với AI chuyên gia Xác suất thống kê. Một số chủ đề bạn có thể quan tâm:<br><br>
+            • <strong>Xác suất:</strong> Công thức Bayes, biến cố độc lập, phụ thuộc.<br>
+            • <strong>Phân phối:</strong> Normal, Binomial, Poisson.<br>
+            • <strong>Thống kê suy diễn:</strong> Ước lượng khoảng, kiểm định T, Chi-squared.<br><br>
+            Vui lòng thử lại hoặc đặt câu hỏi cụ thể!""",
+            "suggestions": ["Công thức xác suất đầy đủ", "Phân phối Poisson là gì?", "Bài tập kiểm định giả thuyết", "Ý nghĩa của p-value"],
+            "ai_mode": "probability_statistics"
+        }
+
+def handle_calculus_questions(question):
+    """Xử lý câu hỏi về Giải tích"""
+    print(f"[DEBUG] handle_calculus_questions called with: {question}")
+    try:
+        prompt = SYSTEM_PROMPTS.get('calculus', "Bạn là một trợ lý AI chuyên về Giải tích. Hãy giải thích các khái niệm, định lý, giải bài tập và cung cấp ví dụ minh họa chi tiết liên quan đến giới hạn, đạo hàm, vi phân, tích phân (xác định, bất định, suy rộng, bội), chuỗi số, chuỗi hàm, phương trình vi phân. Tập trung vào kiến thức bậc đại học (Giải tích 1, 2, 3).")
+        ai_response = call_openai_api(question, prompt, "Giải tích")
+        return {
+            "answer": ai_response,
+            "suggestions": ["Tính đạo hàm", "Tính tích phân", "Giới hạn của hàm số", "Phương trình vi phân"],
+            "ai_mode": "calculus"
+        }
+    except Exception as e:
+        print(f"[ERROR] Calculus AI error: {e}")
+        return {
+            "answer": """📉∫📈 <strong>Giải tích</strong><br><br>
+            Xin lỗi, có lỗi kết nối với AI chuyên gia Giải tích. Một số chủ đề bạn có thể quan tâm:<br><br>
+            • <strong>Đạo hàm:</strong> Quy tắc tính, ứng dụng (khảo sát hàm số).<br>
+            • <strong>Tích phân:</strong> Phương pháp tính, ứng dụng (diện tích, thể tích).<br>
+            • <strong>Chuỗi số:</strong> Sự hội tụ, tổng của chuỗi.<br>
+            • <strong>Phương trình vi phân:</strong> Các dạng cơ bản và cách giải.<br><br>
+            Vui lòng thử lại hoặc đặt câu hỏi cụ thể!""",
+            "suggestions": ["Đạo hàm cấp cao", "Tích phân từng phần", "Chuỗi Taylor", "Giải phương trình vi phân tuyến tính"],
+            "ai_mode": "calculus"
+        }
+
+# --- Handlers with Context ---
+
+def handle_linear_algebra_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi về Đại số tuyến tính với context"""
+    print(f"[DEBUG] handle_linear_algebra_questions_with_context called with: {question}")
+    try:
+        prompt = SYSTEM_PROMPTS.get('linear_algebra', "Bạn là một trợ lý AI chuyên về Đại số tuyến tính. Dựa vào ngữ cảnh cuộc trò chuyện trước đó, hãy giải thích các khái niệm, giải bài tập và cung cấp ví dụ minh họa chi tiết liên quan đến ma trận, vector, không gian vector, hệ phương trình tuyến tính, giá trị riêng, vector riêng. Tập trung vào kiến thức bậc đại học.")
+        ai_response = call_openai_api_with_context(question, prompt, "Đại số tuyến tính", context_messages)
+        return {
+            "answer": ai_response,
+            "suggestions": ["Hỏi sâu hơn về chủ đề đang thảo luận", "Cho ví dụ khác", "Ứng dụng trong thực tế", "Chuyển sang chủ đề ĐSTT khác"],
+            "ai_mode": "linear_algebra"
+        }
+    except Exception as e:
+        print(f"[ERROR] Linear Algebra AI with context error: {e}")
+        return handle_linear_algebra_questions(question)  # Fallback
+
+def handle_probability_statistics_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi về Xác suất thống kê với context"""
+    print(f"[DEBUG] handle_probability_statistics_questions_with_context called with: {question}")
+    try:
+        prompt = SYSTEM_PROMPTS.get('probability_statistics', "Bạn là một trợ lý AI chuyên về Xác suất thống kê. Dựa vào ngữ cảnh cuộc trò chuyện trước đó, hãy giải thích các khái niệm, công thức, giải bài tập và cung cấp ví dụ minh họa chi tiết. Tập trung vào kiến thức bậc đại học.")
+        ai_response = call_openai_api_with_context(question, prompt, "Xác suất thống kê", context_messages)
+        return {
+            "answer": ai_response,
+            "suggestions": ["Giải thích kỹ hơn", "Bài tập tương tự", "Ý nghĩa thống kê", "Chuyển sang chủ đề XSTK khác"],
+            "ai_mode": "probability_statistics"
+        }
+    except Exception as e:
+        print(f"[ERROR] Probability Statistics AI with context error: {e}")
+        return handle_probability_statistics_questions(question)  # Fallback
+
+def handle_calculus_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi về Giải tích với context"""
+    print(f"[DEBUG] handle_calculus_questions_with_context called with: {question}")
+    try:
+        prompt = SYSTEM_PROMPTS.get('calculus', "Bạn là một trợ lý AI chuyên về Giải tích. Dựa vào ngữ cảnh cuộc trò chuyện trước đó, hãy giải thích các khái niệm, định lý, giải bài tập và cung cấp ví dụ minh họa chi tiết. Tập trung vào kiến thức bậc đại học.")
+        ai_response = call_openai_api_with_context(question, prompt, "Giải tích", context_messages)
+        return {
+            "answer": ai_response,
+            "suggestions": ["Các bước giải chi tiết", "Dạng bài tập khác", "Ứng dụng của khái niệm này", "Chuyển sang chủ đề Giải tích khác"],
+            "ai_mode": "calculus"
+        }
+    except Exception as e:
+        print(f"[ERROR] Calculus AI with context error: {e}")
+        return handle_calculus_questions(question)  # Fallback
+
+# END OF NEW HANDLERS

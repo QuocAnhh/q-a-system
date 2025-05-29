@@ -113,12 +113,12 @@ class DatabaseManager:
                 "UPDATE conversations SET is_active = 0 WHERE user_id = ?",
                 (user_id,)
             )
-            
-            # Create new conversation
+              # Create new conversation
             conn.execute(
                 """INSERT INTO conversations 
                    (id, user_id, title, ai_mode, created_at, updated_at, is_active, message_count)
-                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 0)""",                (conversation_id, user_id, title, ai_mode)
+                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 0)""",
+                (conversation_id, user_id, title, ai_mode)
             )
             conn.commit()
             
@@ -151,16 +151,17 @@ class DatabaseManager:
                    LIMIT ?""",
                 (user_id, limit)
             ).fetchall()
-            
             result = []
             for conv in conversations:
+                is_current_conv = (conv['id'] == active_conv_id)
                 result.append({
                     'id': conv['id'],
                     'title': conv['title'],
                     'ai_mode': conv['ai_mode'],
                     'created_at': conv['created_at'],
                     'updated_at': conv['updated_at'],
-                    'is_current': (conv['id'] == active_conv_id),
+                    'is_current': is_current_conv,
+                    'is_active': is_current_conv,  # Đồng bộ cả 2 trường
                     'message_count': conv['message_count']
                 })
             
@@ -197,7 +198,6 @@ class DatabaseManager:
                     'timestamp': msg['timestamp'],
                     'metadata': json.loads(msg['metadata']) if msg['metadata'] else {}
                 })
-            
             return {
                 'id': conv['id'],
                 'title': conv['title'],
@@ -205,13 +205,25 @@ class DatabaseManager:
                 'created_at': conv['created_at'],
                 'updated_at': conv['updated_at'],
                 'is_current': bool(conv['is_active']),
+                'is_active': bool(conv['is_active']),  # Đồng bộ cả 2 trường
                 'message_count': conv['message_count'],
                 'messages': message_list
             }
-    
+            
     def switch_conversation(self, conversation_id: str, user_id: str) -> Optional[Dict]:
         """Switch to different conversation"""
+        print(f"[DEBUG] Database switch_conversation: {conversation_id} for user {user_id}")
+        
         with self.get_connection() as conn:
+            check = conn.execute(
+                "SELECT id FROM conversations WHERE id = ? AND user_id = ?",
+                (conversation_id, user_id)
+            ).fetchone()    
+            
+            if not check:
+                print(f"[ERROR] Conversation {conversation_id} not found for user {user_id}")
+                return None
+            
             # Deactivate all conversations
             conn.execute(
                 "UPDATE conversations SET is_active = 0 WHERE user_id = ?",
@@ -224,11 +236,15 @@ class DatabaseManager:
                 (conversation_id, user_id)
             )
             
+            print(f"[DEBUG] Switch updated {result.rowcount} rows")
+            
             if result.rowcount == 0:
                 return None
             
             conn.commit()
-            return self.get_conversation(conversation_id, user_id)
+            conversation = self.get_conversation(conversation_id, user_id)
+            print(f"[DEBUG] Retrieved conversation: {conversation}")
+            return conversation
     
     def add_message(self, conversation_id: str, user_id: str, question: str, 
                    answer: str, ai_mode: str = None, metadata: Dict = None) -> Dict:
@@ -329,32 +345,33 @@ class DatabaseManager:
                 }
             return {'preferences': {}, 'deadlines': {}, 'schedule': {}}
     
-    def save_user_data(self, user_id: str, preferences: Dict = None, 
-                      deadlines: Dict = None, schedule: Dict = None):
-        """Save user's data"""
+    def update_user_data(self, user_id: str, data: Dict):
+        """Update user's preferences, deadlines, schedule"""
         with self.get_connection() as conn:
             updates = []
             params = []
             
-            if preferences is not None:
+            if 'preferences' in data:
                 updates.append("preferences = ?")
-                params.append(json.dumps(preferences))
+                params.append(json.dumps(data['preferences']))
             
-            if deadlines is not None:
+            if 'deadlines' in data:
                 updates.append("deadlines = ?")
-                params.append(json.dumps(deadlines))
+                params.append(json.dumps(data['deadlines']))
             
-            if schedule is not None:
+            if 'schedule' in data:
                 updates.append("schedule = ?")
-                params.append(json.dumps(schedule))
+                params.append(json.dumps(data['schedule']))
             
             if updates:
-                updates.append("last_active = CURRENT_TIMESTAMP")
                 params.append(user_id)
-                
-                query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
-                conn.execute(query, params)
+                conn.execute(
+                    f"UPDATE users SET {', '.join(updates)}, last_active = CURRENT_TIMESTAMP WHERE id = ?",
+                    params
+                )
                 conn.commit()
+                return True
+            return False
     
     def export_all_data(self, user_id: str) -> Dict:
         """Export all user data for debugging/backup"""

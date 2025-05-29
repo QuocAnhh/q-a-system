@@ -5,18 +5,87 @@ from datetime import datetime
 import json
 
 from config import Config
-from db_session_manager import (
-    get_user_data, save_user_data, create_new_conversation, 
-    get_current_conversation, switch_conversation, add_message_to_conversation,
-    get_conversation_history, delete_conversation, migrate_session_to_database,
-    export_all_data, export_to_html
-)
+from database import get_db
 from ai_handlers import handle_ai_question, handle_ai_question_with_context
 from utils import handle_deadline_commands, handle_calendar_commands, handle_document_search
+from db_session_manager import export_to_html
+
+# Session management functions
+def get_user_id():
+    """Get or create user ID from session"""
+    if 'user_id' not in session:
+        session['user_id'] = f"user_{datetime.now().timestamp()}"
+    return session['user_id']
+
+def get_conversation_history():
+    """Get conversation history"""
+    db = get_db()
+    user_id = get_user_id()
+    return db.get_conversations(user_id)
+
+def create_new_conversation(title=None, ai_mode=None):
+    """Create new conversation"""
+    db = get_db()
+    user_id = get_user_id()
+    if not title:
+        title = f"Hội thoại {datetime.now().strftime('%d/%m %H:%M')}"
+    
+    # Tạo conversation mới
+    conversation = db.create_conversation(user_id, title, ai_mode)
+    
+    return conversation
+
+def get_current_conversation():
+    """Get current conversation"""
+    db = get_db()
+    user_id = get_user_id()
+    return db.get_current_conversation(user_id)
+
+def switch_conversation(conversation_id):
+    """Switch to conversation"""
+    db = get_db()
+    user_id = get_user_id()
+    return db.switch_conversation(conversation_id, user_id)
+
+def delete_conversation(conversation_id):
+    """Delete conversation"""
+    db = get_db()
+    user_id = get_user_id()
+    return db.delete_conversation(conversation_id, user_id)
+
+def add_message_to_conversation(question, answer, ai_mode=None, metadata=None):
+    """Add message to current conversation"""
+    db = get_db()
+    user_id = get_user_id()
+    # Lấy đúng hội thoại active
+    current_conv = db.get_current_conversation(user_id)
+    if not current_conv:
+        title = question[:50] + "..." if len(question) > 50 else question
+        current_conv = db.create_conversation(user_id, title, ai_mode)
+        db.switch_conversation(current_conv['id'], user_id)
+    return db.add_message(current_conv['id'], user_id, question, answer, ai_mode, metadata)
+
+# Local export function was removed and replaced with imported function from db_session_manager
+
+def get_user_data():
+    """Get user's preferences, deadlines, schedule"""
+    try:
+        db = get_db()
+        user_id = get_user_id()
+        return db.get_user_data(user_id)
+    except Exception as e:
+        print(f"[ERROR] get_user_data failed: {e}")
+        return {'preferences': {}, 'deadlines': {}, 'schedule': {}}
+
+def save_user_data(data):
+    """Save user's preferences, deadlines, schedule"""
+    db = get_db()
+    user_id = get_user_id()
+    return db.update_user_data(user_id, data)
 
 app = Flask(__name__)
 CORS(app)
-app.secret_key = "debug_secret_key_for_testing_12345"  # Hardcoded for debugging
+app.secret_key = Config.SECRET_KEY
 
 
 @app.route("/")
@@ -119,85 +188,92 @@ def chat():
         return jsonify({"error": "Có lỗi xảy ra khi xử lý yêu cầu. Vui lòng thử lại."}), 500
 
 
-@app.route("/conversations", methods=["GET"])
+@app.route('/conversations', methods=['GET'])
 def get_conversations():
     """Lấy danh sách tất cả cuộc hội thoại"""
     try:
-        conversations = get_conversation_history()
+        db = get_db()
+        user_id = get_user_id()
+        conversations = db.get_conversations(user_id)
         return jsonify({
-            "conversations": conversations,
-            "timestamp": datetime.now().isoformat()
+            'conversations': conversations,
+            'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
-        print(f"Error getting conversations: {e}")
-        return jsonify({"error": "Không thể lấy danh sách cuộc hội thoại"}), 500
+        return jsonify({'error': str(e)}), 500
 
-
-@app.route("/conversations/new", methods=["POST"])
-def new_conversation():
-    """Tạo cuộc hội thoại mới"""
+@app.route('/conversations/new', methods=['POST'])
+def create_conversation():
+    """Tạo cuộc hội thoại mới và chuyển active"""
     try:
-        conversation = create_new_conversation()
+        db = get_db()
+        user_id = get_user_id()
+        # Tạo tiêu đề mặc định dựa trên thời gian
+        title = f"Hội thoại {datetime.now().strftime('%d/%m %H:%M')}"
+        # Tạo hội thoại mới và chuyển active
+        conversation = db.create_conversation(user_id, title)
+        db.switch_conversation(conversation['id'], user_id)
+        conversations = db.get_conversations(user_id)
         return jsonify({
-            "conversation": conversation,
-            "message": "Đã tạo cuộc hội thoại mới",
-            "timestamp": datetime.now().isoformat()
+            'conversation': conversation,
+            'conversations': conversations,
+            'timestamp': datetime.now().isoformat()
         })
     except Exception as e:
-        print(f"Error creating new conversation: {e}")
-        return jsonify({"error": "Không thể tạo cuộc hội thoại mới"}), 500
+        import traceback
+        traceback.print_exc()  # In ra lỗi chi tiết
+        return jsonify({'error': str(e)}), 500
 
-
-@app.route("/conversations/<conversation_id>", methods=["GET"])
+@app.route('/conversations/<conversation_id>', methods=['GET'])
 def get_conversation(conversation_id):
-    """Lấy chi tiết một cuộc hội thoại"""
+    """Lấy cuộc hội thoại cụ thể với tin nhắn"""
     try:
-        conversation = switch_conversation(conversation_id)
+        db = get_db()
+        user_id = get_user_id()
+        conversation = db.get_conversation(conversation_id, user_id)
         if conversation:
             return jsonify({
-                "conversation": conversation,
-                "timestamp": datetime.now().isoformat()
+                'conversation': conversation,
+                'timestamp': datetime.now().isoformat()
             })
         else:
-            return jsonify({"error": "Không tìm thấy cuộc hội thoại"}), 404
+            return jsonify({'error': 'Không tìm thấy cuộc hội thoại'}), 404
     except Exception as e:
-        print(f"Error getting conversation: {e}")
-        return jsonify({"error": "Không thể lấy cuộc hội thoại"}), 500
+        return jsonify({'error': str(e)}), 500
 
-
-@app.route("/conversations/<conversation_id>", methods=["DELETE"])
-def remove_conversation(conversation_id):
-    """Xóa một cuộc hội thoại"""
-    try:
-        success = delete_conversation(conversation_id)
-        if success:
-            return jsonify({
-                "message": "Đã xóa cuộc hội thoại",
-                "timestamp": datetime.now().isoformat()
-            })
-        else:
-            return jsonify({"error": "Không tìm thấy cuộc hội thoại"}), 404
-    except Exception as e:
-        print(f"Error deleting conversation: {e}")
-        return jsonify({"error": "Không thể xóa cuộc hội thoại"}), 500
-
-
-@app.route("/conversations/<conversation_id>/switch", methods=["POST"])
+@app.route('/conversations/<conversation_id>/switch', methods=['POST'])
 def switch_to_conversation(conversation_id):
     """Chuyển sang cuộc hội thoại khác"""
     try:
-        conversation = switch_conversation(conversation_id)
+        db = get_db()
+        user_id = get_user_id()
+        conversation = db.switch_conversation(conversation_id, user_id)
+        conversations = db.get_conversations(user_id)
         if conversation:
             return jsonify({
-                "conversation": conversation,
-                "message": "Đã chuyển sang cuộc hội thoại khác",
-                "timestamp": datetime.now().isoformat()
+                'conversation': conversation,
+                'conversations': conversations,
+                'timestamp': datetime.now().isoformat()
             })
         else:
-            return jsonify({"error": "Không tìm thấy cuộc hội thoại"}), 404
+            return jsonify({'error': 'Không tìm thấy cuộc hội thoại'}), 404
     except Exception as e:
-        print(f"Error switching conversation: {e}")
-        return jsonify({"error": "Không thể chuyển cuộc hội thoại"}), 500
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/conversations/<conversation_id>', methods=['DELETE'])
+def delete_conversation(conversation_id):
+    """Xóa một cuộc hội thoại"""
+    try:
+        db = get_db()
+        user_id = get_user_id()
+        db.delete_conversation(conversation_id, user_id)
+        conversations = db.get_conversations(user_id)
+        return jsonify({
+            'success': True,
+            'conversations': conversations,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:        return jsonify({'error': str(e)}), 500
 
 
 @app.route("/export-chat", methods=["GET"])

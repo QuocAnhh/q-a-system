@@ -5,25 +5,34 @@ import uuid
 
 
 def get_user_id():
-    known_user_id = "c7edc5dc-5293-474d-9840-c4dff88a88e4"
-    session['user_id'] = known_user_id
-    print(f"[DEBUG] Using fixed user_id for testing: {session['user_id']}")
-    
+    """Get or create user ID from session"""
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
     return session['user_id']
+
+
+def get_actual_user_id():
+    """Get actual user ID from database (ensures user exists)"""
+    db = get_db()
+    session_user_id = get_user_id()
+    return db.get_or_create_user(session_user_id)
 
 
 def get_user_data() -> Dict:
     """Get user data (preferences, deadlines, schedule) - compatible with old interface"""
     db = get_db()
-    user_id = get_user_id()  
+    user_id = get_user_id()
     
-    # get user data
-    user_data = db.get_user_data(user_id)
+    # đảm bảo user tồn tại trong database - use user_id as session_id for compatibility
+    actual_user_id = db.get_or_create_user(user_id)
     
-    # lấy thông tin cuộc hội thoại hiện tại for compatibility
-    current_conv = db.get_current_conversation(user_id)
-    conversations = db.get_conversations(user_id)
+    # Get user data
+    user_data = db.get_user_data(actual_user_id)
+      # lấy current conversation info for compatibility
+    current_conv = db.get_current_conversation(actual_user_id)
+    conversations = db.get_conversations(actual_user_id)
     
+    # chuyển đổi to old format for compatibility
     conversations_dict = {}
     for conv in conversations:
         conv_detail = db.get_conversation(conv['id'], user_id)
@@ -79,10 +88,10 @@ def add_message_to_conversation(question: str, answer: str, ai_mode: str = None,
     db = get_db()
     user_id = get_user_id()
     
-    # Get or create current conversation
+    # lấy hoặc tạo current conversation
     current_conv = db.get_current_conversation(user_id)
     if not current_conv:
-        # Create new conversation if none exists
+        # tạo new conversation nếu ko tồn tại
         title = question[:50] + "..." if len(question) > 50 else question
         current_conv = db.create_conversation(user_id, title, ai_mode)
     
@@ -93,10 +102,7 @@ def get_conversation_history(limit: int = 50) -> List[Dict]:
     """Get conversation history with proper is_current marking"""
     db = get_db()
     user_id = get_user_id()
-    print(f"[DEBUG] Getting conversations for user_id: {user_id}")
-    conversations = db.get_conversations(user_id, limit)
-    print(f"[DEBUG] Found {len(conversations)} conversations")
-    return conversations
+    return db.get_conversations(user_id, limit)
 
 
 def delete_conversation(conversation_id: str) -> bool:
@@ -127,6 +133,7 @@ def export_to_html() -> str:
     return db.export_to_html(user_id)
 
 
+# Migration function to move data from session to database
 def migrate_session_to_database():
     """Migrate existing session data to database (one-time operation)"""
     if 'user_data' not in session:
@@ -136,10 +143,12 @@ def migrate_session_to_database():
         db = get_db()
         user_id = get_user_id()
         
+        # Ensure user exists
         db.get_or_create_user(session.get('session_id', user_id))
         
         session_data = session['user_data']
         
+        # Migrate user preferences, deadlines, schedule
         preferences = session_data.get('preferences', {})
         deadlines = session_data.get('deadlines', {})
         schedule = session_data.get('schedule', {})
@@ -147,6 +156,7 @@ def migrate_session_to_database():
         if preferences or deadlines or schedule:
             db.save_user_data(user_id, preferences, deadlines, schedule)
         
+        # Migrate conversations
         conversations = session_data.get('conversations', {})
         current_conv_id = session_data.get('current_conversation_id')
         
