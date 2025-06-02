@@ -25,13 +25,22 @@
         </div>
 
         <!-- Main chat container -->
-        <div class="container">
-
-            <div class="header">
+        <div class="container">            <div class="header">
                 <h1>Copailit AI</h1>
                 <p>Trợ lý thông minh hỗ trợ học tập và quản lý thời gian</p>
                 <div id="aiModeIndicator" class="ai-mode-indicator" style="display: none;">
                     Mode: <span id="currentMode">General</span>
+                </div>
+                
+                <!-- Calendar Status Section -->
+                <div id="calendarSection" class="calendar-section">
+                    <div id="calendarStatus" class="calendar-status">
+                        <span class="calendar-icon">📅</span>
+                        <span id="calendarStatusText">Kiểm tra kết nối lịch...</span>
+                        <button id="calendarAuthBtn" class="calendar-auth-btn" style="display: none;">
+                            Kết nối Google Calendar
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -40,14 +49,14 @@
                     <strong class="bot">🤖 Copailit:</strong><br>
                     Xin chào! Tôi là Copailit AI. Tôi có thể giúp bạn!
                 </div>
-            </div>
-
-            <div class="suggestions" id="suggestions">
+            </div>            <div class="suggestions" id="suggestions">
                 <div class="suggestion" onclick="askQuestion('Giúp tôi')">❓ Hướng dẫn sử dụng</div>
                 <div class="suggestion" onclick="askQuestion('Giải thích định lý Pythagore')">📐 Định lý Pythagore</div>
                 <div class="suggestion" onclick="askQuestion('Cách học Python')">🐍 Học Python</div>
                 <div class="suggestion" onclick="askQuestion('Mẹo quản lý thời gian')">⏰ Quản lý thời gian</div>
-            </div>      
+                <div class="suggestion calendar-suggestion" onclick="askQuestion('Tạo lịch học ngày mai 9h')">📅 Tạo lịch học</div>
+                <div class="suggestion calendar-suggestion" onclick="askQuestion('Nhắc tôi nộp bài tập vào thứ 6')">🔔 Đặt nhắc nhở</div>
+            </div>
             
             <div id="messageArea" class="message-area"></div>
                 

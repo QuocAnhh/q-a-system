@@ -1,7 +1,3 @@
-"""
-Database management for Project-NLP chatbot
-SQLite implementation for conversations, messages, and user data
-"""
 import sqlite3
 import json
 from datetime import datetime
@@ -18,7 +14,7 @@ class DatabaseManager:
     def get_connection(self):
         """Get database connection with proper settings"""
         conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # Enable dict-like access
+        conn.row_factory = sqlite3.Row  # enable dict-like access
         return conn
     
     def init_database(self):
@@ -68,7 +64,7 @@ class DatabaseManager:
                 )
             """)
             
-            # Indexes for better performance
+            # đánh chỉ mục để speed up truy vấn
             conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations (user_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations (updated_at)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages (conversation_id)")
@@ -79,14 +75,14 @@ class DatabaseManager:
     def get_or_create_user(self, session_id: str) -> str:
         """Get existing user or create new one based on session"""
         with self.get_connection() as conn:
-            # Try to find existing user
+            # tìm kiếm user theo session_id
             user = conn.execute(
                 "SELECT id FROM users WHERE session_id = ?", 
                 (session_id,)
             ).fetchone()
             
             if user:
-                # Update last active
+                # cập nhật last_active
                 conn.execute(
                     "UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE id = ?",
                     (user['id'],)
@@ -108,12 +104,12 @@ class DatabaseManager:
         conversation_id = str(uuid.uuid4())
         
         with self.get_connection() as conn:
-            # Deactivate other conversations
+            # xóa tất cả hội thoại cũ của người dùng
             conn.execute(
                 "UPDATE conversations SET is_active = 0 WHERE user_id = ?",
                 (user_id,)
             )
-              # Create new conversation
+              # tạo cuộc hội thoại mới
             conn.execute(
                 """INSERT INTO conversations 
                    (id, user_id, title, ai_mode, created_at, updated_at, is_active, message_count)

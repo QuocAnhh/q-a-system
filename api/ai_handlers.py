@@ -1,12 +1,24 @@
-import openai
 from datetime import datetime
-from config import SYSTEM_PROMPTS, Config
+from config import SYSTEM_PROMPTS
+from openai_manager import get_smart_response, openai_manager
 
-openai.api_key = Config.OPENAI_API_KEY
+
+def _get_task_type_from_subject(subject):
+    """Xác định task type từ subject để chọn model phù hợp"""
+    subject_lower = subject.lower()
+    
+    if any(keyword in subject_lower for keyword in ['programming', 'lập trình', 'code', 'thuật toán', 'algorithm']):
+        return "programming"
+    elif any(keyword in subject_lower for keyword in ['math', 'toán', 'calculus', 'algebra', 'geometry']):
+        return "math"
+    elif any(keyword in subject_lower for keyword in ['document', 'tài liệu', 'analysis', 'phân tích']):
+        return "document_analysis"
+    else:
+        return "general"
 
 
 def call_openai_api(question, system_prompt, subject):
-    """Gọi OpenAI API với prompt đơn giản và tập trung"""
+    """Gọi OpenAI API với prompt đơn giản và tập trung - compatibility wrapper"""
     try:
         print(f"[DEBUG] call_openai_api called for subject: {subject}")
         print(f"[DEBUG] Question: {question}")
@@ -17,20 +29,19 @@ def call_openai_api(question, system_prompt, subject):
 NHIỆM VỤ: Trả lời trực tiếp câu hỏi "{question}" một cách chính xác và chi tiết.
 Sử dụng HTML formatting để câu trả lời đẹp mắt."""
         
-        messages = [
-            {"role": "system", "content": focused_prompt},
-            {"role": "user", "content": question}
-        ]
+        # Xác định task type dựa trên subject
+        task_type = _get_task_type_from_subject(subject)
         
-        print(f"[DEBUG] Sending request to OpenAI with {len(messages)} messages")
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            max_tokens=1000,
-            temperature=0.3,  # Giảm temperature để có câu trả lời tập trung hơn
+        print(f"[DEBUG] Using task type: {task_type}")
+        
+        # Sử dụng OpenAI manager mới
+        answer = get_smart_response(
+            prompt=question,
+            system_prompt=focused_prompt,
+            task_type=task_type,
+            temperature=0.3  # Giảm temperature để có câu trả lời tập trung hơn
         )
         
-        answer = response.choices[0].message.content.strip()
         print(f"[DEBUG] OpenAI response received: {answer[:100]}...")
         
         return answer
@@ -92,7 +103,12 @@ def handle_ai_question(question):
         general_prompt = """Bạn là trợ lý học tập thông minh. Trả lời câu hỏi một cách chính xác và hữu ích. 
         Sử dụng HTML formatting cho câu trả lời đẹp mắt."""
         
-        ai_response = call_openai_api(question, general_prompt, "Học tập chung")
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=general_prompt,
+            task_type="general",
+            temperature=0.3
+        )
         
         return {
             "answer": ai_response,
@@ -127,7 +143,12 @@ def handle_math_questions(question):
     print(f"[DEBUG] handle_math_questions called with: {question}")
     
     try:
-        ai_response = call_openai_api(question, SYSTEM_PROMPTS['math'], "Toán học")
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS['math'],
+            task_type="math",
+            temperature=0.3
+        )
         print(f"[DEBUG] Math AI response: {ai_response[:100]}...")
         
         return {
@@ -138,16 +159,16 @@ def handle_math_questions(question):
     except Exception as e:
         print(f"[DEBUG] Math AI error: {e}")
         return {
-            "answer": """🧮 <strong>Toán học</strong><br><br>
-            Xin lỗi, hiện tại có lỗi kết nối với AI Toán học. Tuy nhiên, tôi vẫn có thể hỗ trợ bạn với các công thức cơ bản:<br><br>
+            "answer": """📐 <strong>Toán học</strong><br><br>
+            Xin lỗi, hiện tại có lỗi kết nối với AI Toán học. Tuy nhiên, đây là một số công thức cơ bản:<br><br>
             
-            <strong>📐 Hình học:</strong><br>
-            • Diện tích hình vuông: <span class="formula">S = a²</span><br>
+            <strong>📊 Hình học:</strong><br>
+            • Chu vi hình tròn: <span class="formula">C = 2πr</span><br>
             • Diện tích hình tròn: <span class="formula">S = πr²</span><br>
             • Định lý Pythagore: <span class="formula">a² + b² = c²</span><br><br>
             
-            <strong>📊 Đại số:</strong><br>
-            • Công thức nghiệm bậc 2: <span class="formula">x = (-b ± √(b²-4ac))/2a</span><br>
+            <strong>📈 Đại số:</strong><br>
+            • Công thức nghiệm phương trình bậc 2: <span class="formula">x = (-b ± √(b²-4ac))/2a</span><br>
             • Hằng đẳng thức: <span class="formula">(a+b)² = a² + 2ab + b²</span><br><br>
             
             Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
@@ -160,7 +181,12 @@ def handle_physics_questions(question):
     """Xử lý câu hỏi về Vật lý bằng AI thực sự"""
     
     try:
-        ai_response = call_openai_api(question, SYSTEM_PROMPTS['physics'], "Vật lý")
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS['physics'],
+            task_type="general",
+            temperature=0.3
+        )
         
         return {
             "answer": ai_response,
@@ -179,61 +205,63 @@ def handle_physics_questions(question):
             
             <strong>⚡ Điện học:</strong><br>
             • Định luật Ohm: <span class="formula">V = IR</span><br>
-            • Công suất: <span class="formula">P = VI</span><br><br>
+            • Công suất: <span class="formula">P = UI</span><br><br>
             
-            <strong>🌊 Sóng:</strong><br>
-            • Vận tốc sóng: <span class="formula">v = fλ</span><br><br>
-            
-            Hãy hỏi về hiện tượng vật lý cụ thể!""",
-            "suggestions": ["Cơ học", "Điện học", "Quang học", "Thí nghiệm"],
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Cơ học", "Điện học", "Quang học", "Chuyển sang môn khác"],
             "ai_mode": "physics"
         }
 
 
 def handle_programming_questions(question):
     """Xử lý câu hỏi về Lập trình bằng AI thực sự"""
+    print(f"[DEBUG] handle_programming_questions called with: {question}")
     
     try:
-        ai_response = call_openai_api(question, SYSTEM_PROMPTS['programming'], "Lập trình")
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS['programming'],
+            task_type="programming",
+            temperature=0.2  # Lower temperature for more precise code
+        )
+        print(f"[DEBUG] Programming AI response: {ai_response[:100]}...")
         
         return {
             "answer": ai_response,
-            "suggestions": ["Code examples", "Best practices", "Debugging tips", "Chuyển sang môn khác"],
+            "suggestions": ["Code example", "Best practices", "Debug help", "Chuyển sang môn khác"],
             "ai_mode": "programming"
         }
     except Exception as e:
+        print(f"[DEBUG] Programming AI error: {e}")
         return {
             "answer": """💻 <strong>Lập trình</strong><br><br>
-            Xin lỗi, hiện tại có lỗi kết nối với AI lập trình. Tuy nhiên, đây là một số ví dụ cơ bản:<br><br>
+            Xin lỗi, hiện tại có lỗi kết nối với AI Lập trình. Tuy nhiên, đây là một số khái niệm cơ bản:<br><br>
             
             <strong>🐍 Python cơ bản:</strong><br>
-            <div class="code-block">
-            <div class="code-header">Python</div>
-            <div class="code-content">
-            # In ra "Hello World"<br>
-            print("Hello, World!")<br><br>
+            • In ra màn hình: <code>print("Hello World")</code><br>
+            • Khai báo biến: <code>x = 10</code><br>
+            • Vòng lặp: <code>for i in range(5):</code><br><br>
             
-            # Vòng lặp for<br>
-            for i in range(5):<br>
-            &nbsp;&nbsp;&nbsp;&nbsp;print(f"Số {i}")
-            </div>
-            </div><br>
+            <strong>🌐 JavaScript cơ bản:</strong><br>
+            • In ra console: <code>console.log("Hello World")</code><br>
+            • Khai báo biến: <code>let x = 10;</code><br>
+            • Hàm: <code>function myFunction() {}</code><br><br>
             
-            <strong>📚 Tài nguyên học tập:</strong><br>
-            • Python.org - Tài liệu chính thức<br>
-            • W3Schools - Tutorial từ cơ bản<br>
-            • GitHub - Các dự án mẫu<br><br>
-            
-            Hãy hỏi về ngôn ngữ lập trình cụ thể!""",
-            "suggestions": ["Python basics", "JavaScript", "Web development", "Algorithms"],
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Python basics", "JavaScript", "Algorithms", "Chuyển sang môn khác"],
             "ai_mode": "programming"
         }
 
 
 def handle_chemistry_questions(question):
-    """Xử lý câu hỏi về Hóa học bằng AI thực sự"""
+    """Xử lý câu hỏi về Hóa học"""
     try:
-        ai_response = call_openai_api(question, SYSTEM_PROMPTS['chemistry'], "Hóa học")
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS['chemistry'],
+            task_type="general",
+            temperature=0.3
+        )
         
         return {
             "answer": ai_response,
@@ -245,26 +273,30 @@ def handle_chemistry_questions(question):
             "answer": """🧪 <strong>Hóa học</strong><br><br>
             Xin lỗi, hiện tại có lỗi kết nối với AI Hóa học. Tuy nhiên, đây là một số kiến thức cơ bản:<br><br>
             
-            <strong>⚛️ Nguyên tử:</strong><br>
-            • Proton (+), Neutron (0), Electron (-)<br>
-            • Số hiệu nguyên tử = số proton<br><br>
+            <strong>⚛️ Nguyên tố:</strong><br>
+            • Hydro (H): Nguyên tử số 1<br>
+            • Carbon (C): Nguyên tử số 6<br>
+            • Oxygen (O): Nguyên tử số 8<br><br>
             
-            <strong>🔄 Phản ứng cơ bản:</strong><br>
-            • 2H₂ + O₂ → 2H₂O<br>
-            • NaCl → Na⁺ + Cl⁻<br><br>
+            <strong>🔬 Phản ứng cơ bản:</strong><br>
+            • Cháy: <span class="formula">C + O₂ → CO₂</span><br>
+            • Tổng hợp nước: <span class="formula">2H₂ + O₂ → 2H₂O</span><br><br>
             
-            <strong>📊 Bảng tuần hoàn:</strong><br>
-            • 18 nhóm, 7 chu kỳ<br>
-            • Kim loại - Phi kim - Khí hiếm""",
-            "suggestions": ["Phản ứng hóa học", "Bảng tuần hoàn", "Cân bằng phương trình", "Chuyển sang môn khác"],
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Bảng tuần hoàn", "Phản ứng hóa học", "Công thức hóa học", "Chuyển sang môn khác"],
             "ai_mode": "chemistry"
         }
 
 
 def handle_history_questions(question):
-    """Xử lý câu hỏi về Lịch sử bằng AI thực sự"""
+    """Xử lý câu hỏi về Lịch sử"""
     try:
-        ai_response = call_openai_api(question, SYSTEM_PROMPTS['history'], "Lịch sử")
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS['history'],
+            task_type="general",
+            temperature=0.3
+        )
         
         return {
             "answer": ai_response,
@@ -273,454 +305,571 @@ def handle_history_questions(question):
         }
     except Exception as e:
         return {
-            "answer": """📜 <strong>Lịch sử</strong><br><br>
-            Xin lỗi, hiện tại có lỗi kết nối với AI Lịch sử. Tuy nhiên, đây là một số mốc thời gian quan trọng:<br><br>
+            "answer": """📚 <strong>Lịch sử</strong><br><br>
+            Xin lỗi, hiện tại có lỗi kết nối với AI Lịch sử. Tuy nhiên, đây là một số sự kiện quan trọng:<br><br>
             
             <strong>🇻🇳 Lịch sử Việt Nam:</strong><br>
-            • 2879 TCN: Nhà nước Văn Lang<br>
-            • 1010: Thăng Long thành kinh đô<br>
-            • 1945: Tuyên ngôn độc lập<br><br>
+            • 2879 TCN: Vua Hùng dựng nước<br>
+            • 1945: Cách mạng tháng 8<br>
+            • 1975: Thống nhất đất nước<br><br>
             
             <strong>🌍 Lịch sử thế giới:</strong><br>
             • 1789: Cách mạng Pháp<br>
-            • 1914-1918: Thế chiến I<br>
-            • 1939-1945: Thế chiến II""",
-            "suggestions": ["Lịch sử Việt Nam", "Lịch sử thế giới", "Nhân vật lịch sử", "Chuyển sang môn khác"],
+            • 1945: Kết thúc Thế chiến II<br><br>
+            
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Việt Nam", "Thế giới", "Nhân vật", "Chuyển sang môn khác"],
             "ai_mode": "history"
         }
 
 
 def handle_english_questions(question):
-    """Xử lý câu hỏi về Tiếng Anh bằng AI thực sự"""
+    """Xử lý câu hỏi về Tiếng Anh"""
     try:
-        ai_response = call_openai_api(question, SYSTEM_PROMPTS['english'], "Tiếng Anh")
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS['english'],
+            task_type="general",
+            temperature=0.3
+        )
         
         return {
             "answer": ai_response,
-            "suggestions": ["Grammar", "Vocabulary", "Pronunciation", "Chuyển sang môn khác"],
+            "suggestions": ["Grammar", "Vocabulary", "Speaking practice", "Chuyển sang môn khác"],
             "ai_mode": "english"
         }
     except Exception as e:
         return {
-            "answer": """🇺🇸 <strong>Tiếng Anh</strong><br><br>
-            Xin lỗi, hiện tại có lỗi kết nối với AI Tiếng Anh. Tuy nhiên, đây là một số tips cơ bản:<br><br>
+            "answer": """🇬🇧 <strong>English</strong><br><br>
+            Sorry, there's currently an issue with the English AI. However, here are some basic grammar rules:<br><br>
             
-            <strong>📚 Grammar cơ bản:</strong><br>
-            • Present: I study English<br>
-            • Past: I studied English<br>
-            • Future: I will study English<br><br>
+            <strong>📝 Grammar basics:</strong><br>
+            • Present Simple: I/You/We/They + verb<br>
+            • Present Simple: He/She/It + verb + s<br>
+            • Past Simple: verb + ed (regular verbs)<br><br>
             
-            <strong>💡 Tips học từ vựng:</strong><br>
-            • Học 5-10 từ mới mỗi ngày<br>
-            • Sử dụng flashcards<br>
-            • Đọc sách, xem phim tiếng Anh<br><br>
+            <strong>📚 Common phrases:</strong><br>
+            • How are you? - Bạn có khỏe không?<br>
+            • What's your name? - Tên bạn là gì?<br>
+            • Nice to meet you! - Rất vui được gặp bạn!<br><br>
             
-            <strong>🗣️ Luyện speaking:</strong><br>
-            • Nói chuyện với bản thân<br>
-            • Tham gia câu lạc bộ tiếng Anh<br>
-            • Sử dụng apps như HelloTalk""",
-            "suggestions": ["Grammar", "Vocabulary", "Pronunciation", "Chuyển sang môn khác"],
+            Please ask a specific question so I can help you better!""",
+            "suggestions": ["Grammar rules", "Vocabulary", "Common phrases", "Chuyển sang môn khác"],
             "ai_mode": "english"
         }
 
 
 def handle_study_questions(question):
-    """Xử lý câu hỏi về phương pháp học tập bằng AI thực sự"""
+    """Xử lý câu hỏi về phương pháp học tập"""
     try:
-        ai_response = call_openai_api(question, SYSTEM_PROMPTS['study'], "Phương pháp học tập")
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS['study'],
+            task_type="general",
+            temperature=0.3
+        )
         
         return {
             "answer": ai_response,
-            "suggestions": ["Kỹ thuật ghi nhớ", "Lập kế hoạch học", "Động lực học tập", "Chuyển sang môn khác"],
+            "suggestions": ["Phương pháp học", "Lịch trình ôn thi", "Kỹ thuật ghi nhớ", "Chuyển sang môn khác"],
             "ai_mode": "study"
         }
     except Exception as e:
         return {
-            "answer": """📚 <strong>Phương pháp học tập hiệu quả</strong><br><br>
+            "answer": """📖 <strong>Phương pháp học tập</strong><br><br>
+            Xin lỗi, hiện tại có lỗi kết nối với AI Học tập. Tuy nhiên, đây là một số mẹo hiệu quả:<br><br>
             
             <strong>🎯 Kỹ thuật Pomodoro:</strong><br>
             • Học 25 phút, nghỉ 5 phút<br>
-            • Sau 4 lần, nghỉ 15-30 phút<br><br>
-            
-            <strong>📝 Ghi chú hiệu quả:</strong><br>
-            • Sử dụng sơ đồ tư duy (Mind Map)<br>
-            • Ghi chú Cornell Method<br>
-            • Highlight các ý chính<br><br>
+            • Sau 4 chu kỳ, nghỉ 15-30 phút<br><br>
             
             <strong>🧠 Kỹ thuật ghi nhớ:</strong><br>
-            • Lặp lại cách quãng (Spaced Repetition)<br>
-            • Liên kết thông tin mới với kiến thức cũ<br>
-            • Thực hành active recall<br><br>
+            • Ôn lại sau 1 ngày, 1 tuần, 1 tháng<br>
+            • Tạo flashcards cho từ khóa quan trọng<br>
+            • Học nhóm để trao đổi kiến thức<br><br>
             
-            <strong>⏰ Quản lý thời gian:</strong><br>
-            • Lập danh sách việc cần làm<br>
-            • Ưu tiên công việc quan trọng<br>
-            • Tạo thói quen học tập đều đặn""",
-            "suggestions": ["Kỹ thuật ghi nhớ", "Quản lý thời gian", "Giảm stress", "Lập kế hoạch"],
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Lập kế hoạch", "Kỹ thuật ghi nhớ", "Ôn thi hiệu quả", "Chuyển sang môn khác"],
             "ai_mode": "study"
         }
 
 
 def handle_time_management_questions(question):
     """Xử lý câu hỏi về quản lý thời gian"""
-    
-    return {
-        "answer": """⏰ <strong>Quản lý thời gian hiệu quả</strong><br><br>
-        
-        <strong>📅 Lập kế hoạch hàng ngày:</strong><br>
-        • Viết ra 3 việc quan trọng nhất<br>
-        • Ước tính thời gian cho mỗi việc<br>
-        • Bắt đầu với việc khó nhất<br><br>
-        
-        <strong>🎯 Ma trận Eisenhower:</strong><br>
-        • Quan trọng + Gấp = Làm ngay<br>
-        • Quan trọng + Không gấp = Lên kế hoạch<br>
-        • Không quan trọng + Gấp = Ủy thác<br>
-        • Không quan trọng + Không gấp = Loại bỏ<br><br>
-        
-        <strong>⚡ Tips nhanh:</strong><br>
-        • Tắt thông báo khi học<br>
-        • Chuẩn bị mọi thứ từ tối hôm trước<br>
-        • Nghỉ ngơi đúng cách<br>
-        • Thưởng cho bản thân khi hoàn thành mục tiêu""",
-        "suggestions": ["Lập kế hoạch học tập", "Ưu tiên công việc", "Loại bỏ phân tâm", "Tạo thói quen"],
-        "ai_mode": "time_management"
-    }
-
-
-def handle_ai_question_with_context(question, context_messages=None):
-    """Xử lý câu hỏi AI với context từ lịch sử cuộc trò chuyện"""
-    q = question.lower()
-    print(f"[DEBUG] handle_ai_question_with_context called with: {question}")
-    print(f"[DEBUG] Context messages: {len(context_messages) if context_messages else 0}")
-    
-    # Detect subject như trước
-    if any(keyword in q for keyword in ['lập trình', 'programming', 'code', 'python', 'javascript', 'thuật toán', 'algorithm', 'decision tree', 'machine learning', 'ai']):
-        return handle_programming_questions_with_context(question, context_messages)
-    
-    if any(keyword in q for keyword in ['toán', 'math', 'công thức', 'tính', 'phương trình']) and 'thuật toán' not in q and 'algorithm' not in q:
-        return handle_math_questions_with_context(question, context_messages)
-    
-    if any(keyword in q for keyword in ['vật lý', 'physics', 'lực', 'năng lượng', 'tốc độ']):
-        return handle_physics_questions_with_context(question, context_messages)
-    
-    if any(keyword in q for keyword in ['hóa học', 'chemistry', 'phản ứng', 'nguyên tố']):
-        return handle_chemistry_questions_with_context(question, context_messages)
-    
-    if any(keyword in q for keyword in ['lịch sử', 'history', 'việt nam', 'thế giới']):
-        return handle_history_questions_with_context(question, context_messages)
-    
-    if any(keyword in q for keyword in ['tiếng anh', 'english', 'grammar', 'vocabulary']):
-        return handle_english_questions_with_context(question, context_messages)
-    
-    if any(keyword in q for keyword in ['học', 'ôn thi', 'thi cử', 'kiểm tra', 'mẹo', 'phương pháp']):
-        return handle_study_questions_with_context(question, context_messages)
-    
-    if any(keyword in q for keyword in ['thời gian', 'kế hoạch', 'lịch trình', 'quản lý']):
-        return handle_time_management_questions_with_context(question, context_messages)
-
-    # NEW: Đại số tuyến tính
-    if any(keyword in q for keyword in ['đại số tuyến tính', 'linear algebra', 'ma trận', 'matrix', 'vector', 'không gian vector', 'hệ phương trình tuyến tính']):
-        print(f"[DEBUG] Detected linear algebra keywords, routing to handle_linear_algebra_questions")
-        return handle_linear_algebra_questions(question)
-
-    # NEW: Xác suất thống kê
-    if any(keyword in q for keyword in ['xác suất thống kê', 'probability', 'statistics', 'phân phối', 'distribution', 'kiểm định giả thuyết', 'hypothesis testing', 'hồi quy']):
-        print(f"[DEBUG] Detected probability statistics keywords, routing to handle_probability_statistics_questions")
-        return handle_probability_statistics_questions(question)
-
-    # NEW: Giải tích
-    if any(keyword in q for keyword in ['giải tích', 'calculus', 'vi phân', 'differential', 'tích phân', 'integral', 'đạo hàm', 'derivative', 'giới hạn', 'limit']):
-        print(f"[DEBUG] Detected calculus keywords, routing to handle_calculus_questions")
-        return handle_calculus_questions(question)
-    
-    # General fallback với context
-    return handle_general_questions_with_context(question, context_messages)
-
-
-def call_openai_api_with_context(question, system_prompt, subject, context_messages=None):
-    """Gọi OpenAI API với context từ lịch sử cuộc trò chuyện"""
     try:
-        print(f"[DEBUG] call_openai_api_with_context called for subject: {subject}")
-        print(f"[DEBUG] Question: {question}")
-        print(f"[DEBUG] Context messages: {len(context_messages) if context_messages else 0}")
-        
-        # Xây dựng messages với context
-        messages = [{"role": "system", "content": system_prompt}]
-        
-        # Thêm context messages nếu có
-        if context_messages:
-            messages.extend(context_messages)
-        
-        # Thêm câu hỏi hiện tại
-        messages.append({"role": "user", "content": question})
-        
-        print(f"[DEBUG] Sending request to OpenAI with {len(messages)} messages")
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            max_tokens=1200,  # Tăng max_tokens để xử lý context
-            temperature=0.3,
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS['time_management'],
+            task_type="general",
+            temperature=0.3
         )
         
-        answer = response.choices[0].message.content.strip()
-        print(f"[DEBUG] OpenAI response received: {answer[:100]}...")
-        
-        return answer
-    except Exception as e:
-        print(f"[ERROR] OpenAI API Error: {e}")
-        return f"Hiện tại có lỗi kết nối với AI. Vui lòng thử lại sau. Chi tiết lỗi: {str(e)}"
-
-
-def handle_math_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Toán học với context"""
-    try:
-        # Ensure SYSTEM_PROMPTS is defined and accessible, or handle potential KeyError
-        math_prompt = SYSTEM_PROMPTS.get('math', "Bạn là một trợ lý Toán học AI. Hãy trả lời các câu hỏi một cách chính xác và chi tiết, tập trung vào kiến thức Toán học phổ thông và đại học.") # Default prompt
-        ai_response = call_openai_api_with_context(question, math_prompt, "Toán học", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Hỏi thêm về Toán", "Bài tập thực hành", "Ví dụ cụ thể", "Chuyển sang môn khác"],
-            "ai_mode": "math"
-        }
-    except Exception as e:
-        print(f"[ERROR] Math AI with context error: {e}")
-        return handle_math_questions(question)  # Fallback to non-context version
-
-
-def handle_programming_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Lập trình với context"""
-    try:
-        ai_response = call_openai_api_with_context(question, SYSTEM_PROMPTS['programming'], "Lập trình", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Code examples", "Best practices", "Debugging tips", "Chuyển sang môn khác"],
-            "ai_mode": "programming"
-        }
-    except Exception as e:
-        return handle_programming_questions(question)  # Fallback
-
-
-def handle_physics_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Vật lý với context"""
-    try:
-        ai_response = call_openai_api_with_context(question, SYSTEM_PROMPTS['physics'], "Vật lý", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Hỏi thêm về Vật lý", "Thí nghiệm thực tế", "Ví dụ ứng dụng", "Chuyển sang môn khác"],
-            "ai_mode": "physics"
-        }
-    except Exception as e:
-        return handle_physics_questions(question)  # Fallback
-
-
-def handle_chemistry_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Hóa học với context"""
-    try:
-        ai_response = call_openai_api_with_context(question, SYSTEM_PROMPTS['chemistry'], "Hóa học", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Phản ứng hóa học", "Bảng tuần hoàn", "Thí nghiệm", "Chuyển sang môn khác"],
-            "ai_mode": "chemistry"
-        }
-    except Exception as e:
-        return handle_chemistry_questions(question)  # Fallback
-
-
-def handle_history_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Lịch sử với context"""
-    try:
-        ai_response = call_openai_api_with_context(question, SYSTEM_PROMPTS['history'], "Lịch sử", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Lịch sử Việt Nam", "Lịch sử thế giới", "Các sự kiện quan trọng", "Chuyển sang môn khác"],
-            "ai_mode": "history"
-        }
-    except Exception as e:
-        return handle_history_questions(question)  # Fallback
-
-
-def handle_english_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Tiếng Anh với context"""
-    try:
-        ai_response = call_openai_api_with_context(question, SYSTEM_PROMPTS['english'], "Tiếng Anh", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Grammar tips", "Vocabulary", "Speaking practice", "Chuyển sang môn khác"],
-            "ai_mode": "english"
-        }
-    except Exception as e:
-        return handle_english_questions(question)  # Fallback
-
-
-def handle_study_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về phương pháp học tập với context"""
-    try:
-        ai_response = call_openai_api_with_context(question, SYSTEM_PROMPTS['study'], "Phương pháp học tập", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Kỹ thuật ghi nhớ", "Lập kế hoạch học", "Động lực học tập", "Chuyển sang môn khác"],
-            "ai_mode": "study"
-        }
-    except Exception as e:
-        return handle_study_questions(question)  # Fallback
-
-
-def handle_time_management_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về quản lý thời gian với context"""
-    try:
-        # Ensure SYSTEM_PROMPTS is defined and accessible
-        study_prompt = SYSTEM_PROMPTS.get('study', "Bạn là một trợ lý AI về phương pháp học tập và quản lý thời gian. Hãy đưa ra lời khuyên thực tế và hữu ích.") # Default
-        ai_response = call_openai_api_with_context(question, study_prompt, "Quản lý thời gian", context_messages)
         return {
             "answer": ai_response,
             "suggestions": ["Lập kế hoạch", "Ưu tiên công việc", "Công cụ quản lý", "Chuyển sang môn khác"],
-            "ai_mode": "study" # Consider if "time_management" mode is needed or if "study" is fine
+            "ai_mode": "time_management"
         }
     except Exception as e:
-        print(f"[ERROR] Time management AI with context error: {e}")
-        return handle_time_management_questions(question)  # Fallback
+        return {
+            "answer": """⏰ <strong>Quản lý thời gian</strong><br><br>
+            Xin lỗi, hiện tại có lỗi kết nối với AI Quản lý thời gian. Tuy nhiên, đây là một số mẹo hữu ích:<br><br>
+            
+            <strong>📅 Ma trận Eisenhower:</strong><br>
+            • Quan trọng & Gấp: Làm ngay<br>
+            • Quan trọng & Không gấp: Lên kế hoạch<br>
+            • Không quan trọng & Gấp: Ủy thác<br>
+            • Không quan trọng & Không gấp: Loại bỏ<br><br>
+            
+            <strong>🎯 Quy tắc 80/20:</strong><br>
+            • 20% công việc mang lại 80% kết quả<br>
+            • Tập trung vào nhiệm vụ quan trọng nhất<br><br>
+            
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Lập kế hoạch học tập", "Ưu tiên công việc", "Cân bằng học tập", "Chuyển sang môn khác"],
+            "ai_mode": "time_management"
+        }
+
+
+# New subject handlers
+def handle_linear_algebra_questions(question):
+    """Xử lý câu hỏi về Đại số tuyến tính"""
+    try:
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS.get('linear_algebra', SYSTEM_PROMPTS['math']),
+            task_type="math",
+            temperature=0.3
+        )
+        
+        return {
+            "answer": ai_response,
+            "suggestions": ["Ma trận", "Vector", "Hệ phương trình", "Chuyển sang môn khác"],
+            "ai_mode": "linear_algebra"
+        }
+    except Exception as e:
+        return {
+            "answer": """🔢 <strong>Đại số tuyến tính</strong><br><br>
+            Xin lỗi, hiện tại có lỗi kết nối với AI. Tuy nhiên, đây là một số khái niệm cơ bản:<br><br>
+            
+            <strong>📊 Ma trận:</strong><br>
+            • Ma trận vuông: số hàng = số cột<br>
+            • Ma trận đơn vị: đường chéo chính = 1<br>
+            • Định thức: det(A)<br><br>
+            
+            <strong>➡️ Vector:</strong><br>
+            • Tích vô hướng: a·b = |a||b|cos(θ)<br>
+            • Độ dài vector: |v| = √(x² + y² + z²)<br><br>
+            
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Ma trận", "Vector", "Định thức", "Chuyển sang môn khác"],
+            "ai_mode": "linear_algebra"
+        }
+
+
+def handle_probability_statistics_questions(question):
+    """Xử lý câu hỏi về Xác suất thống kê"""
+    try:
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS.get('probability_statistics', SYSTEM_PROMPTS['math']),
+            task_type="math",
+            temperature=0.3
+        )
+        
+        return {
+            "answer": ai_response,
+            "suggestions": ["Xác suất", "Phân phối", "Kiểm định", "Chuyển sang môn khác"],
+            "ai_mode": "probability_statistics"
+        }
+    except Exception as e:
+        return {
+            "answer": """📈 <strong>Xác suất thống kê</strong><br><br>
+            Xin lỗi, hiện tại có lỗi kết nối với AI. Tuy nhiên, đây là một số công thức cơ bản:<br><br>
+            
+            <strong>🎲 Xác suất:</strong><br>
+            • P(A) = số trường hợp thuận lợi / tổng số trường hợp<br>
+            • P(A ∪ B) = P(A) + P(B) - P(A ∩ B)<br>
+            • P(A|B) = P(A ∩ B) / P(B)<br><br>
+            
+            <strong>📊 Thống kê:</strong><br>
+            • Trung bình: x̄ = Σx/n<br>
+            • Phương sai: σ² = Σ(x-x̄)²/n<br><br>
+            
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Xác suất cơ bản", "Phân phối chuẩn", "Kiểm định giả thuyết", "Chuyển sang môn khác"],
+            "ai_mode": "probability_statistics"
+        }
+
+
+def handle_calculus_questions(question):
+    """Xử lý câu hỏi về Giải tích"""
+    try:
+        ai_response = get_smart_response(
+            prompt=question,
+            system_prompt=SYSTEM_PROMPTS.get('calculus', SYSTEM_PROMPTS['math']),
+            task_type="math",
+            temperature=0.3
+        )
+        
+        return {
+            "answer": ai_response,
+            "suggestions": ["Đạo hàm", "Tích phân", "Giới hạn", "Chuyển sang môn khác"],
+            "ai_mode": "calculus"
+        }
+    except Exception as e:
+        return {
+            "answer": """∫ <strong>Giải tích</strong><br><br>
+            Xin lỗi, hiện tại có lỗi kết nối với AI. Tuy nhiên, đây là một số công thức cơ bản:<br><br>
+            
+            <strong>📈 Đạo hàm:</strong><br>
+            • (x^n)' = n·x^(n-1)<br>
+            • (sin x)' = cos x<br>
+            • (cos x)' = -sin x<br>
+            • (e^x)' = e^x<br><br>
+            
+            <strong>∫ Tích phân:</strong><br>
+            • ∫x^n dx = x^(n+1)/(n+1) + C<br>
+            • ∫sin x dx = -cos x + C<br>
+            • ∫cos x dx = sin x + C<br><br>
+            
+            Hãy hỏi câu hỏi cụ thể để tôi có thể hỗ trợ tốt hơn!""",
+            "suggestions": ["Quy tắc đạo hàm", "Tích phân cơ bản", "Giới hạn", "Chuyển sang môn khác"],
+            "ai_mode": "calculus"
+        }
+
+
+# Context-aware handlers (for conversation continuity)
+def handle_ai_question_with_context(question, context_messages=None):
+    """Xử lý câu hỏi AI với context từ cuộc trò chuyện trước"""
+    print(f"[DEBUG] handle_ai_question_with_context called")
+    print(f"[DEBUG] Question: {question}")
+    print(f"[DEBUG] Context messages: {len(context_messages) if context_messages else 0}")
+    
+    try:
+        # PRIORITY 1: Check for calendar requests first
+        calendar_keywords = [
+            'lịch', 'deadline', 'hẹn', 'cuộc họp', 'sự kiện', 'nhắc nhở', 
+            'meeting', 'event', 'reminder', 'schedule', 'appointment',
+            'tạo lịch', 'đặt lịch', 'thêm lịch', 'lên lịch'
+        ]
+        
+        if any(keyword in question.lower() for keyword in calendar_keywords):
+            print(f"[DEBUG] Detected calendar request in AI handler")
+            try:
+                from calendar_integration import CalendarIntegration
+                
+                # Generate a simple user ID for calendar functionality
+                user_id = f"user_{datetime.now().strftime('%Y%m%d')}"
+                
+                calendar_integration = CalendarIntegration()
+                calendar_result = calendar_integration.process_calendar_request(user_id, question)
+                
+                # Format calendar response for chat interface
+                if calendar_result['success']:
+                    return {
+                        "answer": calendar_result['message'],
+                        "suggestions": ["Xem lịch", "Tạo sự kiện khác", "Hỏi về học tập"],
+                        "ai_mode": "calendar",
+                        "calendar_data": calendar_result.get('data'),
+                        "calendar_action": calendar_result.get('action')
+                    }
+                else:
+                    # If calendar fails, provide helpful response
+                    print(f"[DEBUG] Calendar processing failed: {calendar_result['message']}")
+                    if calendar_result.get('action') == 'auth_required':
+                        return {
+                            "answer": f"{calendar_result['message']}\n\n💡 **Hoặc bạn có thể hỏi tôi về:**\n• Phương pháp quản lý thời gian hiệu quả\n• Cách lập kế hoạch học tập\n• Mẹo tổ chức công việc",
+                            "suggestions": ["Quản lý thời gian", "Lập kế hoạch học", "Hỏi khác"],
+                            "ai_mode": "calendar_suggestion",
+                            "calendar_data": calendar_result.get('data')
+                        }
+                    elif calendar_result.get('action') == 'none':
+                        # Continue to normal AI processing for non-calendar questions
+                        pass
+                    else:
+                        return {
+                            "answer": f"{calendar_result['message']}\n\n💡 **Trong khi đó, tôi có thể giúp bạn:**\n• Lời khuyên về quản lý thời gian\n• Phương pháp lập kế hoạch học tập\n• Kỹ thuật tổ chức công việc hiệu quả",
+                            "suggestions": ["Mẹo quản lý thời gian", "Lập kế hoạch học", "Hỏi khác"],
+                            "ai_mode": "calendar_fallback"
+                        }
+                    
+            except ImportError:
+                print("[DEBUG] Calendar integration not available")
+                # Add helpful response about time management
+                if any(word in question.lower() for word in ['lịch', 'deadline', 'kế hoạch', 'thời gian']):
+                    return {
+                        "answer": """📅 **Về quản lý thời gian và lịch trình:**\n\nTôi hiểu bạn quan tâm đến việc quản lý thời gian! Dù chức năng calendar chưa khả dụng, tôi có thể chia sẻ các mẹo hữu ích:\n\n**🎯 Nguyên tắc ưu tiên:**\n• Ma trận Eisenhower: Quan trọng vs Gấp\n• Quy tắc 80/20: Tập trung vào 20% công việc quan trọng\n\n**⏰ Kỹ thuật Pomodoro:**\n• Làm việc 25 phút, nghỉ 5 phút\n• Tăng tập trung và hiệu suất\n\n**📝 Lập kế hoạch:**\n• Viết ra mục tiêu cụ thể\n• Chia nhỏ công việc lớn\n• Đặt deadline thực tế\n\nBạn muốn tôi giải thích chi tiết về phương pháp nào?""",
+                        "suggestions": ["Ma trận Eisenhower", "Kỹ thuật Pomodoro", "Lập kế hoạch học tập", "Mẹo tăng hiệu suất"],
+                        "ai_mode": "time_management"
+                    }
+            except Exception as calendar_error:
+                print(f"[DEBUG] Calendar integration error: {calendar_error}")
+                # Continue to normal AI processing
+        
+        # PRIORITY 2: Normal AI processing
+        # Prepare messages with context
+        messages = []
+        
+        # Add system prompt
+        messages.append({
+            "role": "system", 
+            "content": """Bạn là trợ lý học tập thông minh. Trả lời câu hỏi một cách chính xác và hữu ích.
+            Sử dụng HTML formatting cho câu trả lời đẹp mắt. Hãy duy trì ngữ cảnh cuộc trò chuyện.
+            
+            KHI NGƯỜI DÙNG HỎI VỀ THỜI GIAN/LỊCH TRÌNH:
+            - Đưa ra lời khuyên thực tế về quản lý thời gian
+            - Gợi ý các phương pháp lập kế hoạch hiệu quả
+            - Chia sẻ kỹ thuật tổ chức công việc
+            """
+        })
+        
+        # Add context messages if available
+        if context_messages:
+            for msg in context_messages[-6:]:  # Keep last 6 messages for context
+                if msg.get('role') and msg.get('content'):
+                    messages.append({
+                        "role": msg['role'],
+                        "content": msg['content']
+                    })
+        
+        # Add current question
+        messages.append({"role": "user", "content": question})
+        
+        # Use OpenAI manager for response
+        result = openai_manager.chat_completion(
+            messages=messages,
+            task_type="general",
+            temperature=0.3
+        )
+        
+        if result["success"]:
+            ai_response = result["response"].choices[0].message.content.strip()
+            
+            # Check if response should include calendar/time management suggestions
+            response_lower = ai_response.lower()
+            question_lower = question.lower()
+            
+            calendar_trigger_words = [
+                'thời gian', 'lịch trình', 'deadline', 'kế hoạch', 'nhắc nhở',
+                'tổ chức', 'quản lý', 'ưu tiên'
+            ]
+            
+            suggestions = ["Hỏi thêm", "Làm rõ", "Ví dụ", "Chuyển chủ đề"]
+            
+            if any(word in question_lower or word in response_lower for word in calendar_trigger_words):
+                suggestions = ["Mẹo quản lý thời gian", "Kỹ thuật Pomodoro", "Lập kế hoạch học"] + suggestions[:1]
+            
+            return {
+                "answer": ai_response,
+                "suggestions": suggestions,
+                "ai_mode": "context_aware",
+                "model_used": result["model_used"]
+            }
+        else:
+            return {
+                "answer": f"Xin lỗi, có lỗi xảy ra: {result.get('error', 'Unknown error')}",
+                "suggestions": ["Thử lại", "Hỏi khác", "Đơn giản hóa câu hỏi"],
+                "ai_mode": "error"
+            }
+            
+    except Exception as e:
+        print(f"[ERROR] Context-aware AI error: {e}")
+        return {
+            "answer": f"Xin lỗi, có lỗi xảy ra khi xử lý câu hỏi: {str(e)}",
+            "suggestions": ["Thử lại", "Hỏi đơn giản hơn"],
+            "ai_mode": "error"
+        }
+
+
+# Additional context-aware handlers for specific subjects
+def handle_math_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi Toán với context"""
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS['math']}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="math", temperature=0.3)
+    if result["success"]:
+        return {
+            "answer": result["response"].choices[0].message.content.strip(),
+            "suggestions": ["Bài tập thêm", "Giải thích chi tiết", "Ví dụ khác"],
+            "ai_mode": "math_context"
+        }
+    return {"answer": "Lỗi xử lý câu hỏi Toán.", "suggestions": ["Thử lại"]}
+
+
+def handle_programming_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi Lập trình với context"""
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS['programming']}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="programming", temperature=0.2)
+    if result["success"]:
+        return {
+            "answer": result["response"].choices[0].message.content.strip(),
+            "suggestions": ["Code example", "Best practices", "Debug help"],
+            "ai_mode": "programming_context"
+        }
+    return {"answer": "Lỗi xử lý câu hỏi Lập trình.", "suggestions": ["Thử lại"]}
+
+
+# Additional subject handlers with context
+def handle_physics_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi Vật lý với context"""
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS['physics']}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="general", temperature=0.3)
+    return _format_response_with_fallback(result, "physics_context", ["Thí nghiệm", "Ứng dụng", "Công thức"])
+
+
+def handle_chemistry_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi Hóa học với context"""
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS['chemistry']}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="general", temperature=0.3)
+    return _format_response_with_fallback(result, "chemistry_context", ["Phản ứng", "Thí nghiệm", "Cơ chế"])
+
+
+def handle_history_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi Lịch sử với context"""
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS['history']}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="general", temperature=0.3)
+    return _format_response_with_fallback(result, "history_context", ["Nhân vật", "Sự kiện", "Ý nghĩa"])
+
+
+def handle_english_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi Tiếng Anh với context"""
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS['english']}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="general", temperature=0.3)
+    return _format_response_with_fallback(result, "english_context", ["Grammar", "Vocabulary", "Practice"])
+
+
+def handle_study_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi Học tập với context"""
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS['study']}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="general", temperature=0.3)
+    return _format_response_with_fallback(result, "study_context", ["Kế hoạch", "Phương pháp", "Động lực"])
+
+
+def handle_time_management_questions_with_context(question, context_messages=None):
+    """Xử lý câu hỏi Quản lý thời gian với context"""
+    messages = [{"role": "system", "content": SYSTEM_PROMPTS['time_management']}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="general", temperature=0.3)
+    return _format_response_with_fallback(result, "time_management_context", ["Lập kế hoạch", "Ưu tiên", "Cân bằng"])
 
 
 def handle_general_questions_with_context(question, context_messages=None):
     """Xử lý câu hỏi chung với context"""
+    messages = [{"role": "system", "content": "Bạn là trợ lý học tập thông minh. Trả lời một cách hữu ích và chính xác."}]
+    if context_messages:
+        messages.extend(context_messages[-4:])
+    messages.append({"role": "user", "content": question})
+    
+    result = openai_manager.chat_completion(messages=messages, task_type="general", temperature=0.3)
+    return _format_response_with_fallback(result, "general_context", ["Hỏi thêm", "Làm rõ", "Chuyển chủ đề"])
+
+
+def _format_response_with_fallback(result, ai_mode, suggestions):
+    """Helper function để format response với fallback"""
+    if result["success"]:
+        return {
+            "answer": result["response"].choices[0].message.content.strip(),
+            "suggestions": suggestions,
+            "ai_mode": ai_mode
+        }
+    else:
+        return {
+            "answer": f"Lỗi xử lý câu hỏi: {result.get('error', 'Unknown error')}",
+            "suggestions": ["Thử lại", "Hỏi khác"],
+            "ai_mode": "error"
+        }
+
+
+# Study Tools Functions (for future expansion)
+def generate_flashcards_from_content(content, subject="general"):
+    """Tạo flashcards từ nội dung văn bản"""
     try:
-        general_prompt = """Bạn là trợ lý học tập thông minh. Trả lời câu hỏi một cách chính xác và hữu ích. 
-        Sử dụng HTML formatting cho câu trả lời đẹp mắt. Dựa vào ngữ cảnh cuộc trò chuyện trước đó để đưa ra câu trả lời phù hợp."""
+        prompt = f"""Tạo 5-10 flashcards từ nội dung sau:
+
+{content}
+
+Format: 
+**Câu hỏi:** [câu hỏi]
+**Đáp án:** [đáp án ngắn gọn]
+
+Tập trung vào các khái niệm quan trọng và dễ nhớ."""
         
-        ai_response = call_openai_api_with_context(question, general_prompt, "Học tập chung", context_messages)
+        response = get_smart_response(
+            prompt=prompt,
+            task_type="study_tools",
+            temperature=0.3
+        )
         
         return {
-            "answer": ai_response,
-            "suggestions": ["Hỏi về môn học cụ thể", "Phương pháp học tập", "Quản lý thời gian", "Tìm tài liệu"],
-            "ai_mode": "general"
+            "flashcards": response,
+            "success": True,
+            "count": response.count("**Câu hỏi:**")
         }
     except Exception as e:
-        return handle_ai_question(question)  # Fallback to original function
+        return {
+            "flashcards": f"Lỗi tạo flashcards: {str(e)}",
+            "success": False,
+            "count": 0
+        }
 
 
-# START OF NEW HANDLERS
-
-def handle_linear_algebra_questions(question):
-    """Xử lý câu hỏi về Đại số tuyến tính"""
-    print(f"[DEBUG] handle_linear_algebra_questions called with: {question}")
+def generate_exam_questions(content, question_count=10, difficulty="medium"):
+    """Tạo câu hỏi thi từ nội dung"""
     try:
-        # Ensure SYSTEM_PROMPTS is defined and accessible
-        prompt = SYSTEM_PROMPTS.get('linear_algebra', "Bạn là một trợ lý AI chuyên về Đại số tuyến tính. Hãy giải thích các khái niệm, giải bài tập và cung cấp ví dụ minh họa chi tiết liên quan đến ma trận, vector, không gian vector, hệ phương trình tuyến tính, giá trị riêng, vector riêng, và các ứng dụng của Đại số tuyến tính. Tập trung vào kiến thức bậc đại học.")
-        ai_response = call_openai_api(question, prompt, "Đại số tuyến tính")
+        prompt = f"""Tạo {question_count} câu hỏi thi {difficulty} từ nội dung sau:
+
+{content}
+
+Bao gồm:
+- 50% câu hỏi trắc nghiệm (4 đáp án A, B, C, D)
+- 30% câu hỏi tự luận ngắn
+- 20% câu hỏi phân tích/thảo luận
+
+Format rõ ràng với đáp án."""
+        
+        response = get_smart_response(
+            prompt=prompt,
+            task_type="study_tools",
+            temperature=0.4
+        )
+        
         return {
-            "answer": ai_response,
-            "suggestions": ["Khái niệm ma trận", "Không gian vector", "Giải hệ phương trình tuyến tính", "Giá trị riêng, vector riêng"],
-            "ai_mode": "linear_algebra"
+            "exam_questions": response,
+            "success": True,
+            "difficulty": difficulty
         }
     except Exception as e:
-        print(f"[ERROR] Linear Algebra AI error: {e}")
         return {
-            "answer": """📈 <strong>Đại số tuyến tính</strong><br><br>
-            Xin lỗi, có lỗi kết nối với AI chuyên gia Đại số tuyến tính. Một số chủ đề bạn có thể quan tâm:<br><br>
-            • <strong>Ma trận:</strong> Các phép toán, định thức, ma trận nghịch đảo.<br>
-            • <strong>Vector:</strong> Không gian vector, tổ hợp tuyến tính, độc lập tuyến tính.<br>
-            • <strong>Hệ phương trình tuyến tính:</strong> Phương pháp Gauss, Cramer.<br>
-            • <strong>Giá trị riêng & Vector riêng.</strong><br><br>
-            Vui lòng thử lại hoặc đặt câu hỏi cụ thể!""",
-            "suggestions": ["Giải thích định thức", "Không gian con là gì?", "Bài tập về ma trận", "Ứng dụng của ĐSTT"],
-            "ai_mode": "linear_algebra"
+            "exam_questions": f"Lỗi tạo đề thi: {str(e)}",
+            "success": False
         }
-
-def handle_probability_statistics_questions(question):
-    """Xử lý câu hỏi về Xác suất thống kê"""
-    print(f"[DEBUG] handle_probability_statistics_questions called with: {question}")
-    try:
-        prompt = SYSTEM_PROMPTS.get('probability_statistics', "Bạn là một trợ lý AI chuyên về Xác suất thống kê. Hãy giải thích các khái niệm, công thức, giải bài tập và cung cấp ví dụ minh họa chi tiết liên quan đến xác suất, biến ngẫu nhiên, các phân phối xác suất (binomial, poisson, normal,...), luật số lớn, định lý giới hạn trung tâm, ước lượng tham số, kiểm định giả thuyết, phân tích hồi quy. Tập trung vào kiến thức bậc đại học.")
-        ai_response = call_openai_api(question, prompt, "Xác suất thống kê")
-        return {
-            "answer": ai_response,
-            "suggestions": ["Phân phối chuẩn", "Kiểm định giả thuyết", "Xác suất có điều kiện", "Hồi quy tuyến tính"],
-            "ai_mode": "probability_statistics"
-        }
-    except Exception as e:
-        print(f"[ERROR] Probability Statistics AI error: {e}")
-        return {
-            "answer": """📊 <strong>Xác suất thống kê</strong><br><br>
-            Xin lỗi, có lỗi kết nối với AI chuyên gia Xác suất thống kê. Một số chủ đề bạn có thể quan tâm:<br><br>
-            • <strong>Xác suất:</strong> Công thức Bayes, biến cố độc lập, phụ thuộc.<br>
-            • <strong>Phân phối:</strong> Normal, Binomial, Poisson.<br>
-            • <strong>Thống kê suy diễn:</strong> Ước lượng khoảng, kiểm định T, Chi-squared.<br><br>
-            Vui lòng thử lại hoặc đặt câu hỏi cụ thể!""",
-            "suggestions": ["Công thức xác suất đầy đủ", "Phân phối Poisson là gì?", "Bài tập kiểm định giả thuyết", "Ý nghĩa của p-value"],
-            "ai_mode": "probability_statistics"
-        }
-
-def handle_calculus_questions(question):
-    """Xử lý câu hỏi về Giải tích"""
-    print(f"[DEBUG] handle_calculus_questions called with: {question}")
-    try:
-        prompt = SYSTEM_PROMPTS.get('calculus', "Bạn là một trợ lý AI chuyên về Giải tích. Hãy giải thích các khái niệm, định lý, giải bài tập và cung cấp ví dụ minh họa chi tiết liên quan đến giới hạn, đạo hàm, vi phân, tích phân (xác định, bất định, suy rộng, bội), chuỗi số, chuỗi hàm, phương trình vi phân. Tập trung vào kiến thức bậc đại học (Giải tích 1, 2, 3).")
-        ai_response = call_openai_api(question, prompt, "Giải tích")
-        return {
-            "answer": ai_response,
-            "suggestions": ["Tính đạo hàm", "Tính tích phân", "Giới hạn của hàm số", "Phương trình vi phân"],
-            "ai_mode": "calculus"
-        }
-    except Exception as e:
-        print(f"[ERROR] Calculus AI error: {e}")
-        return {
-            "answer": """📉∫📈 <strong>Giải tích</strong><br><br>
-            Xin lỗi, có lỗi kết nối với AI chuyên gia Giải tích. Một số chủ đề bạn có thể quan tâm:<br><br>
-            • <strong>Đạo hàm:</strong> Quy tắc tính, ứng dụng (khảo sát hàm số).<br>
-            • <strong>Tích phân:</strong> Phương pháp tính, ứng dụng (diện tích, thể tích).<br>
-            • <strong>Chuỗi số:</strong> Sự hội tụ, tổng của chuỗi.<br>
-            • <strong>Phương trình vi phân:</strong> Các dạng cơ bản và cách giải.<br><br>
-            Vui lòng thử lại hoặc đặt câu hỏi cụ thể!""",
-            "suggestions": ["Đạo hàm cấp cao", "Tích phân từng phần", "Chuỗi Taylor", "Giải phương trình vi phân tuyến tính"],
-            "ai_mode": "calculus"
-        }
-
-# --- Handlers with Context ---
-
-def handle_linear_algebra_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Đại số tuyến tính với context"""
-    print(f"[DEBUG] handle_linear_algebra_questions_with_context called with: {question}")
-    try:
-        prompt = SYSTEM_PROMPTS.get('linear_algebra', "Bạn là một trợ lý AI chuyên về Đại số tuyến tính. Dựa vào ngữ cảnh cuộc trò chuyện trước đó, hãy giải thích các khái niệm, giải bài tập và cung cấp ví dụ minh họa chi tiết liên quan đến ma trận, vector, không gian vector, hệ phương trình tuyến tính, giá trị riêng, vector riêng. Tập trung vào kiến thức bậc đại học.")
-        ai_response = call_openai_api_with_context(question, prompt, "Đại số tuyến tính", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Hỏi sâu hơn về chủ đề đang thảo luận", "Cho ví dụ khác", "Ứng dụng trong thực tế", "Chuyển sang chủ đề ĐSTT khác"],
-            "ai_mode": "linear_algebra"
-        }
-    except Exception as e:
-        print(f"[ERROR] Linear Algebra AI with context error: {e}")
-        return handle_linear_algebra_questions(question)  # Fallback
-
-def handle_probability_statistics_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Xác suất thống kê với context"""
-    print(f"[DEBUG] handle_probability_statistics_questions_with_context called with: {question}")
-    try:
-        prompt = SYSTEM_PROMPTS.get('probability_statistics', "Bạn là một trợ lý AI chuyên về Xác suất thống kê. Dựa vào ngữ cảnh cuộc trò chuyện trước đó, hãy giải thích các khái niệm, công thức, giải bài tập và cung cấp ví dụ minh họa chi tiết. Tập trung vào kiến thức bậc đại học.")
-        ai_response = call_openai_api_with_context(question, prompt, "Xác suất thống kê", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Giải thích kỹ hơn", "Bài tập tương tự", "Ý nghĩa thống kê", "Chuyển sang chủ đề XSTK khác"],
-            "ai_mode": "probability_statistics"
-        }
-    except Exception as e:
-        print(f"[ERROR] Probability Statistics AI with context error: {e}")
-        return handle_probability_statistics_questions(question)  # Fallback
-
-def handle_calculus_questions_with_context(question, context_messages=None):
-    """Xử lý câu hỏi về Giải tích với context"""
-    print(f"[DEBUG] handle_calculus_questions_with_context called with: {question}")
-    try:
-        prompt = SYSTEM_PROMPTS.get('calculus', "Bạn là một trợ lý AI chuyên về Giải tích. Dựa vào ngữ cảnh cuộc trò chuyện trước đó, hãy giải thích các khái niệm, định lý, giải bài tập và cung cấp ví dụ minh họa chi tiết. Tập trung vào kiến thức bậc đại học.")
-        ai_response = call_openai_api_with_context(question, prompt, "Giải tích", context_messages)
-        return {
-            "answer": ai_response,
-            "suggestions": ["Các bước giải chi tiết", "Dạng bài tập khác", "Ứng dụng của khái niệm này", "Chuyển sang chủ đề Giải tích khác"],
-            "ai_mode": "calculus"
-        }
-    except Exception as e:
-        print(f"[ERROR] Calculus AI with context error: {e}")
-        return handle_calculus_questions(question)  # Fallback
-
-# END OF NEW HANDLERS

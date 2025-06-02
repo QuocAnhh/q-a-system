@@ -1,6 +1,6 @@
 from flask import session
 from database import get_db
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 import uuid
 
 
@@ -26,7 +26,7 @@ def get_user_data() -> Dict:
     # đảm bảo user tồn tại trong database - use user_id as session_id for compatibility
     actual_user_id = db.get_or_create_user(user_id)
     
-    # Get user data
+    # get user data
     user_data = db.get_user_data(actual_user_id)
       # lấy current conversation info for compatibility
     current_conv = db.get_current_conversation(actual_user_id)
@@ -133,7 +133,6 @@ def export_to_html() -> str:
     return db.export_to_html(user_id)
 
 
-# Migration function to move data from session to database
 def migrate_session_to_database():
     """Migrate existing session data to database (one-time operation)"""
     if 'user_data' not in session:
@@ -143,12 +142,11 @@ def migrate_session_to_database():
         db = get_db()
         user_id = get_user_id()
         
-        # Ensure user exists
+        # đảm bảo user tồn tại
         db.get_or_create_user(session.get('session_id', user_id))
         
         session_data = session['user_data']
         
-        # Migrate user preferences, deadlines, schedule
         preferences = session_data.get('preferences', {})
         deadlines = session_data.get('deadlines', {})
         schedule = session_data.get('schedule', {})
@@ -156,7 +154,6 @@ def migrate_session_to_database():
         if preferences or deadlines or schedule:
             db.save_user_data(user_id, preferences, deadlines, schedule)
         
-        # Migrate conversations
         conversations = session_data.get('conversations', {})
         current_conv_id = session_data.get('current_conversation_id')
         
