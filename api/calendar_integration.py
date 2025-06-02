@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta
 from calendar_manager import GoogleCalendarManager
 from calendar_ai_parser import CalendarAIParser
+from db_session_manager import add_message_to_conversation, get_current_conversation
 import logging
 
 #logging
@@ -22,6 +23,7 @@ class CalendarIntegration:
         try:
             # Parse the user message
             parsed_request = self.ai_parser.parse_calendar_request(user_message)
+            parsed_request['raw_message'] = user_message
             
             if parsed_request['action'] == 'none' or parsed_request['confidence'] < 0.3:
                 return {
@@ -123,6 +125,10 @@ class CalendarIntegration:
                 if parsed_request.get('reminder', 15) > 0:
                     message += f"\n🔔 Nhắc nhở trước {parsed_request.get('reminder', 15)} phút"
                 
+                # Save to conversation
+                add_message_to_conversation(parsed_request.get('raw_message', ''), message, ai_mode='calendar', metadata={'calendar_action': 'create_event'})
+                conversation = get_current_conversation()
+                
                 return {
                     'success': True,
                     'message': message,
@@ -137,7 +143,8 @@ class CalendarIntegration:
                             'location': location
                         }
                     },
-                    'action': 'create_event'
+                    'action': 'create_event',
+                    'conversation': conversation
                 }
             else:
                 return {
@@ -196,6 +203,10 @@ class CalendarIntegration:
                     reminder_text = self._format_reminder_time(parsed_request.get('reminder', 60))
                     message += f"\n🔔 Nhắc nhở trước {reminder_text}"
                 
+                # Save to conversation
+                add_message_to_conversation(parsed_request.get('raw_message', ''), message, ai_mode='calendar', metadata={'calendar_action': 'create_deadline'})
+                conversation = get_current_conversation()
+                
                 return {
                     'success': True,
                     'message': message,
@@ -204,7 +215,8 @@ class CalendarIntegration:
                         'event_link': result.get('event_link'),
                         'deadline_details': deadline_data
                     },
-                    'action': 'create_deadline'
+                    'action': 'create_deadline',
+                    'conversation': conversation
                 }
             else:
                 return {
@@ -418,26 +430,3 @@ class CalendarIntegration:
                 return f"{days} ngày"
             else:
                 return f"{days} ngày {remaining_hours} giờ"
-
-# Example usage functions for testing
-def test_calendar_integration():
-    """Test function to verify calendar integration"""
-    
-    calendar_integration = CalendarIntegration()
-    
-    # Test messages
-    test_messages = [
-        "Tạo lịch họp ngày mai 9h",
-        "Đặt deadline dự án ngày 15/12",
-        "Xem lịch tuần này",
-        "Lên lịch gặp khách hàng thứ 5 lúc 14:30"
-    ]
-    
-    print("Testing Calendar Integration...")
-    for message in test_messages:
-        print(f"\nInput: {message}")
-        result = calendar_integration.ai_parser.parse_calendar_request(message)
-        print(f"Parsed: {json.dumps(result, indent=2, ensure_ascii=False)}")
-
-if __name__ == "__main__":
-    test_calendar_integration()

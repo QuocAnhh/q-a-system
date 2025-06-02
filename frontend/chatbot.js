@@ -559,11 +559,34 @@ async function sendQuestion() {
                 }, 1000);
             }
             
-            // Chỉ cập nhật conversation list mà KHÔNG reload messages
-            // để cập nhật metadata như message count
-            setTimeout(() => {
-                updateConversationMetadata();
-            }, 500);
+            // Nếu backend trả về conversation object với messages mới nhất
+            if (data.conversation && Array.isArray(data.conversation.messages)) {
+                // Cập nhật currentConversationId và render lại khung chat từ response
+                currentConversationId = data.conversation.id;
+                updateAIModeIndicator(data.conversation.ai_mode);
+                clearChatBox();
+                messageCounter = 0;
+                pendingMessages.clear();
+                data.conversation.messages.forEach((message, index) => {
+                    const userMsgId = `user-loaded-${data.conversation.id}-${index}`;
+                    const botMsgId = `bot-loaded-${data.conversation.id}-${index}`;
+                    addMessage(message.question, 'user', false, userMsgId);
+                    addMessage(message.answer, 'bot', false, botMsgId);
+                });
+                messageCounter = data.conversation.messages.length * 2 + 1000;
+                // Update conversation list metadata
+                setTimeout(() => {
+                    updateConversationMetadata();
+                }, 500);
+            } else if (data.conversation_id && data.conversation_id !== currentConversationId) {
+                setTimeout(() => {
+                    loadConversationsAndShowActive();
+                }, 500);
+            } else {
+                setTimeout(() => {
+                    updateConversationMetadata();
+                }, 500);
+            }
             
         } else {
             replaceMessage(botMessageId, '❌ Lỗi: ' + (data.error || data.message || 'Unknown error'), 'bot');

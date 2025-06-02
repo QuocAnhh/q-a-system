@@ -88,7 +88,7 @@ class OpenAIModelManager:
             temperature_default=0.7
         )
     }
-    DEFAULT_MODEL = "gpt-4.1-nano"  # Chỉ cần đổi tên model ở đây
+    DEFAULT_MODEL = "gpt-4o-mini" 
     
     FALLBACK_CHAIN = [
         "gpt-4o-mini",
