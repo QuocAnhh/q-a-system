@@ -318,7 +318,7 @@ def process_question_with_context(question, context_messages=None):
     print(f"[DEBUG] process_question_with_context called with: {question}")
     print(f"[DEBUG] Context messages count: {len(context_messages) if context_messages else 0}")
     
-    # 1. Ưu tiên các lệnh chào hỏi TRƯỚC TIÊN
+    # Ưu tiên các lệnh chào hỏi TRƯỚC TIÊN
     greeting_patterns = [
         q == 'xin chào', q == 'chào', q == 'hello', q == 'hi',
         q.startswith('xin chào'), q.startswith('chào bạn'), 
@@ -333,22 +333,22 @@ def process_question_with_context(question, context_messages=None):
             "suggestions": ["Giải thích về Python", "Công thức Toán", "Lịch sử Việt Nam", "Mẹo học tập"]
         }
     
-    # 2. Các lệnh deadline
+    # Các lệnh deadline
     if q.startswith('deadline') or 'thêm deadline' in q or 'xóa deadline' in q:
         print(f"[DEBUG] Detected deadline command")
         return handle_deadline_commands(question, user_data)
     
-    # 3. Lệnh quản lý lịch
+    # Lệnh quản lý lịch
     if any(phrase in q for phrase in ['lịch hôm nay', 'lịch tuần', 'thêm lịch', 'calendar', 'lịch học']):
         print(f"[DEBUG] Detected calendar command")
         return handle_calendar_commands(question, user_data)
     
-    # 4. Tìm kiếm tài liệu
+    # Tìm kiếm tài liệu
     if q.startswith('tìm tài liệu') or q.startswith('search'):
         print(f"[DEBUG] Detected document search")
         return handle_document_search(question, user_data)
     
-    # 5. Còn lại tất cả đều là câu hỏi học tập - chuyển cho AI handler với context
+    # Còn lại tất cả đều là câu hỏi học tập - chuyển cho AI handler với context
     print(f"[DEBUG] Routing to AI handler with context")
     return handle_ai_question_with_context(question, context_messages)
 
@@ -643,3 +643,11 @@ def get_calendar_events():
             'data': None,
             'action': 'error'
         }), 500
+
+if __name__ == "__main__":
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        debug=True,
+        use_reloader=True
+    )
