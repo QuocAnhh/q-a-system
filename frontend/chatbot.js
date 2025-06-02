@@ -596,7 +596,7 @@ function addMessage(message, sender, isTyping = false, customId = null) {
     bubble.className = `bubble ${sender} ${isTyping ? 'typing' : ''}`;
     bubble.id = messageId;
     
-    const senderIcon = sender === 'user' ? '👤' : '🤖';
+    const senderIcon = sender === 'user' ? '😺' : '🤖';
     const senderName = sender === 'user' ? 'Bạn' : 'Copailit';
     
     bubble.innerHTML = `<strong class="${sender}">${senderIcon} ${senderName}:</strong><br>${processedMessage}`;
@@ -625,7 +625,7 @@ function replaceMessage(messageId, newContent, sender) {
         // Process HTML content nếu là bot message
         const processedContent = sender === 'bot' ? processHTMLContent(newContent) : newContent;
         
-        const senderIcon = sender === 'user' ? '👤' : '🤖';
+        const senderIcon = sender === 'user' ? '😺' : '🤖';
         const senderName = sender === 'user' ? 'Bạn' : 'Copailit';
         
         messageElement.className = `bubble ${sender}`; // Remove typing class
