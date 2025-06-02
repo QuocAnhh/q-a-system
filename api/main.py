@@ -10,7 +10,8 @@ from ai_handlers import handle_ai_question, handle_ai_question_with_context
 from utils import handle_deadline_commands, handle_calendar_commands, handle_document_search
 from db_session_manager import export_to_html
 
-# Session management functions
+
+# hàm quản lý các phiên
 def get_user_id():
     """Get or create user ID from session"""
     if 'user_id' not in session:
@@ -355,6 +356,338 @@ def process_question_with_context(question, context_messages=None):
 def process_question(question):
     """Xử lý câu hỏi từ người dùng (compatibility function)"""
     return process_question_with_context(question, None)
+
+
+# ==================== CALENDAR INTEGRATION ENDPOINTS ====================
+
+@app.route('/calendar/auth/status', methods=['GET'])
+def calendar_auth_status():
+    """Check calendar authentication status"""
+    try:
+        from calendar_integration import CalendarIntegration
+        
+        # Try to get user_id from query parameter first, fallback to session
+        user_id = request.args.get('user_id')
+        if not user_id:
+            user_id = get_user_id()
+        
+        calendar_integration = CalendarIntegration()
+        
+        result = calendar_integration.get_auth_status(user_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error checking calendar auth status: {e}")
+        return jsonify({
+            'authenticated': False,
+            'status': 'error',
+            'message': 'Có lỗi xảy ra khi kiểm tra trạng thái xác thực.',
+            'action': 'error'
+        }), 500
+
+@app.route('/calendar/auth/url', methods=['GET', 'POST'])
+def calendar_auth_url():
+    """Get calendar authentication URL"""
+    try:
+        from calendar_integration import CalendarIntegration
+        
+        # Get user_id from request body (POST) or session (GET)
+        user_id = None
+        if request.method == 'POST':
+            data = request.get_json()
+            user_id = data.get('user_id') if data else None
+        
+        if not user_id:
+            user_id = get_user_id()
+        
+        calendar_integration = CalendarIntegration()
+        
+        # Get auth URL from calendar manager
+        auth_result = calendar_integration.calendar_manager.get_auth_url(user_id)
+        
+        if auth_result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': auth_result.get('message', 'URL xác thực được tạo thành công.'),
+                'auth_url': auth_result.get('auth_url'),
+                'user_id': user_id,
+                'action': 'auth_url_generated'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': auth_result.get('message', 'Không thể tạo URL xác thực.'),
+                'action': 'error'
+            }), 400
+        
+    except Exception as e:
+        print(f"Error generating calendar auth URL: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Có lỗi xảy ra khi tạo URL xác thực: {str(e)}',
+            'action': 'error'
+        }), 500
+
+@app.route('/calendar/oauth2callback', methods=['GET'])
+def calendar_oauth2callback():
+    """Handle Google OAuth callback"""
+    try:
+        print(f"🔄 OAuth callback received")
+        print(f"🔍 Request args: {request.args}")
+        
+        # Get parameters từ URL
+        user_id = request.args.get('state')
+        auth_code = request.args.get('code')
+        error = request.args.get('error')
+        scope = request.args.get('scope')
+        
+        print(f"🔍 user_id: {user_id}")
+        print(f"🔍 auth_code: {auth_code[:20] if auth_code else None}...")
+        print(f"🔍 error: {error}")
+        print(f"🔍 scope: {scope}")
+        
+        if error:
+            print(f"❌ OAuth error: {error}")
+            return f"""
+            <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>❌ Xác thực bị từ chối</h2>
+                    <p>Lỗi: {error}</p>
+                    <script>setTimeout(() => window.close(), 5000);</script>
+                </body>
+            </html>
+            """, 400
+        
+        if not user_id or not auth_code:
+            print(f"❌ Missing parameters: user_id={user_id}, auth_code={bool(auth_code)}")
+            return """
+            <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>❌ Thiếu thông tin xác thực</h2>
+                    <p>Không nhận được đủ thông tin từ Google.</p>
+                    <script>setTimeout(() => window.close(), 5000);</script>
+                </body>
+            </html>
+            """, 400
+        
+        # Import calendar integration
+        from calendar_integration import CalendarIntegration
+        calendar_integration = CalendarIntegration()
+        
+        print(f"🔄 Processing auth callback...")
+        result = calendar_integration.handle_auth_callback(user_id, auth_code)
+        
+        print(f"🔍 Callback result: {result}")
+        
+        if result.get('success'):
+            print(f"✅ Auth successful!")
+            return f"""
+            <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>✅ Xác thực Google Calendar thành công!</h2>
+                    <p>{result.get('message', 'Kết nối thành công!')}</p>
+                    <p><strong>Bạn có thể đóng tab này và quay lại ứng dụng.</strong></p>
+                    <script>
+                        if (window.opener) {{
+                            window.opener.postMessage({{
+                                type: 'calendar_auth_success',
+                                message: 'Xác thực thành công'
+                            }}, '*');
+                        }}
+                        setTimeout(() => window.close(), 5000);
+                    </script>
+                </body>
+            </html>
+            """
+        else:
+            print(f"❌ Auth failed: {result.get('message')}")
+            return f"""
+            <html>
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family: Arial; text-align: center; padding: 50px;">
+                    <h2>❌ Lỗi xác thực</h2>
+                    <p>{result.get('message', 'Xác thực thất bại')}</p>
+                    <script>setTimeout(() => window.close(), 5000);</script>
+                </body>
+            </html>
+            """, 400
+        
+    except Exception as e:
+        print(f"❌ Exception in OAuth callback: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return f"""
+        <html>
+            <head><meta charset="UTF-8"></head>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+                <h2>❌ Lỗi server</h2>
+                <p>Có lỗi xảy ra: {str(e)}</p>
+                <script>setTimeout(() => window.close(), 5000);</script>
+            </body>
+        </html>
+        """, 500
+
+@app.route('/calendar/auth/callback', methods=['POST'])
+def calendar_auth_callback():
+    """Handle calendar authentication callback from frontend"""
+    try:
+        from calendar_integration import CalendarIntegration
+        
+        data = request.get_json()
+        user_id = data.get('user_id')
+        auth_code = data.get('code')
+        
+        if not user_id or not auth_code:
+            return jsonify({
+                'success': False,
+                'message': 'Thiếu thông tin xác thực.',
+                'action': 'validation_error'
+            }), 400
+        
+        calendar_integration = CalendarIntegration()
+        result = calendar_integration.handle_auth_callback(user_id, auth_code)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error handling calendar auth callback: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Có lỗi xảy ra khi xử lý callback: {str(e)}',
+            'action': 'error'
+        }), 500
+
+@app.route('/calendar/process', methods=['POST'])
+def process_calendar_request():
+    """Process natural language calendar requests"""
+    try:
+        from calendar_integration import CalendarIntegration
+        
+        data = request.get_json()
+        if not data or ('message' not in data and 'question' not in data):
+            return jsonify({
+                'success': False,
+                'message': 'Thiếu nội dung tin nhắn.',
+                'data': None,
+                'action': 'validation_error'
+            }), 400
+        
+        # Get user_id from request data or fallback to session
+        user_id = data.get('user_id')
+        if not user_id:
+            user_id = get_user_id()
+        
+        user_message = data.get('message') or data.get('question')
+        
+        calendar_integration = CalendarIntegration()
+        result = calendar_integration.process_calendar_request(user_id, user_message)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"Error processing calendar request: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'Có lỗi xảy ra khi xử lý yêu cầu lịch.',
+            'data': None,
+            'action': 'error'
+        }), 500
+
+@app.route('/calendar/events', methods=['GET'])
+def get_calendar_events():
+    """Get upcoming calendar events"""
+    try:
+        from calendar_integration import CalendarIntegration
+        
+        user_id = get_user_id()
+        days_ahead = request.args.get('days', 7, type=int)
+        
+        calendar_integration = CalendarIntegration()
+        
+        # Check authentication first
+        auth_status = calendar_integration.get_auth_status(user_id)
+        if not auth_status.get('success'):
+            return jsonify(auth_status)
+        
+        # Get events
+        result = calendar_integration.calendar_manager.get_upcoming_events(user_id, days_ahead)
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': f'Lấy thành công {len(result["events"])} sự kiện.',
+                'data': {
+                    'events': result['events'],
+                    'total_count': len(result['events']),
+                    'days_ahead': days_ahead
+                },
+                'action': 'get_events'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f"Không thể lấy sự kiện: {result['error']}",
+                'data': None,
+                'action': 'get_events_failed'
+            })
+        
+    except Exception as e:
+        print(f"Error getting calendar events: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'Có lỗi xảy ra khi lấy sự kiện.',
+            'data': None,
+            'action': 'error'
+        }), 500
+
+@app.route('/calendar/test', methods=['GET'])
+def test_calendar_integration():
+    """Test endpoint for calendar integration"""
+    try:
+        from calendar_integration import CalendarIntegration
+        
+        calendar_integration = CalendarIntegration()
+        
+        # Test parsing some sample messages
+        test_messages = [
+            "Tạo lịch họp ngày mai 9h",
+            "Đặt deadline dự án ngày 15/12",
+            "Xem lịch tuần này"
+        ]
+        
+        results = []
+        for message in test_messages:
+            parsed = calendar_integration.ai_parser.parse_calendar_request(message)
+            results.append({
+                'input': message,
+                'parsed': parsed
+            })
+        
+        return jsonify({
+            'success': True,
+            'message': 'Test calendar integration completed.',
+            'data': {
+                'test_results': results,
+                'calendar_manager_available': True,
+                'ai_parser_available': True
+            },
+            'action': 'test'
+        })
+        
+    except Exception as e:
+        print(f"Error testing calendar integration: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': f'Test failed: {str(e)}',
+            'data': None,
+            'action': 'test_error'
+        }), 500
 
 
 if __name__ == "__main__":

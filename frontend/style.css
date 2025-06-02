@@ -14,7 +14,7 @@ body {
         .container { 
             flex: 1; background: #fff; 
             border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
-            padding: 30px; position: relative;
+            padding: 10px; position: relative;
         }
 
         .menu {
@@ -27,7 +27,7 @@ body {
         }
 
         .header {
-            text-align: center; margin-bottom: 30px; color: #333;
+            text-align: center; margin-bottom: 20px; color: #333;
         }
         .header h1 {
             font-size: 2.5em; margin-bottom: 10px; font-weight: 900;
@@ -529,4 +529,74 @@ body {
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Calendar Section Styles */
+        .calendar-section {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .calendar-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .calendar-icon {
+            font-size: 1.2em;
+        }
+
+        .calendar-status.connected {
+            color: #28a745;
+        }
+
+        .calendar-status.disconnected {
+            color: #dc3545;
+        }
+
+        .calendar-status.checking {
+            color: #6c757d;
+        }
+
+        .calendar-auth-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+        }
+
+        .calendar-auth-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .calendar-auth-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .calendar-suggestion {
+            background: linear-gradient(45deg, #28a745, #20c997) !important;
+            color: white !important;
+        }
+
+        .calendar-suggestion:hover {
+            background: linear-gradient(45deg, #218838, #1e7e34) !important;
+        }
+
+        .calendar-suggestion.disabled {
+            background: #6c757d !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
         }

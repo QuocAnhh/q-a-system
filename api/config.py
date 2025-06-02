@@ -16,6 +16,23 @@ class Config:
         'search_engine_id': os.getenv('GOOGLE_SEARCH_ENGINE_ID', 'YOUR_SEARCH_ENGINE_ID'),
         'calendar_api_key': os.getenv('GOOGLE_CALENDAR_API_KEY', 'YOUR_CALENDAR_API_KEY')
     }
+    
+    # Google Calendar OAuth Configuration
+    GOOGLE_CALENDAR_CONFIG = {
+        'client_id': os.getenv('GOOGLE_CALENDAR_CLIENT_ID'),
+        'client_secret': os.getenv('GOOGLE_CALENDAR_CLIENT_SECRET'),
+        'redirect_uri': os.getenv('GOOGLE_CALENDAR_REDIRECT_URI', 'http://localhost:5000/calendar/auth/callback'),
+        'scopes': ['https://www.googleapis.com/auth/calendar'],
+        'timezone': os.getenv('CALENDAR_TIMEZONE', 'Asia/Ho_Chi_Minh')
+    }
+    
+    # Calendar Settings
+    CALENDAR_SETTINGS = {
+        'max_events': int(os.getenv('CALENDAR_MAX_EVENTS', 50)),
+        'default_reminder': int(os.getenv('CALENDAR_DEFAULT_REMINDER', 15)),
+        'tokens_dir': os.path.join(os.path.dirname(__file__), '..', 'data', 'calendar_tokens'),
+        'credentials_file': os.path.join(os.path.dirname(__file__), '..', 'data', 'credentials.json')
+    }
 
 # System prompts cho từng môn học - ĐƠN GIẢN VÀ TẬP TRUNG
 SYSTEM_PROMPTS = {

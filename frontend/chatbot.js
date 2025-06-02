@@ -26,6 +26,9 @@ async function initializeApp() {
     try {
         console.log('[DEBUG] Initializing app...');
         
+        // Check for OAuth callback first
+        handleOAuthCallback();
+        
         // Reset trạng thái
         clearChatBox();
         messageCounter = 0;
@@ -34,6 +37,9 @@ async function initializeApp() {
         
         // Luôn load danh sách và lịch sử chat của conv active (nếu có)
         await loadConversationsAndShowActive();
+        
+        // Check calendar status
+        await checkCalendarStatus();
         
         console.log('[DEBUG] App initialized successfully');
     } catch (error) {
@@ -199,8 +205,7 @@ function setupEventListeners() {
     } else {
         console.error('[ERROR] New chat button not found');
     }
-    
-    // Nút export chat
+      // Nút export chat
     const exportBtn = document.getElementById('exportButton');
     if (exportBtn) {
         console.log('[DEBUG] Attaching event listener to exportButton');
@@ -210,6 +215,18 @@ function setupEventListeners() {
         });
     } else {
         console.error('[ERROR] Export button not found');
+    }
+    
+    // Calendar authentication button
+    const calendarAuthBtn = document.getElementById('calendarAuthBtn');
+    if (calendarAuthBtn) {
+        console.log('[DEBUG] Attaching event listener to calendarAuthBtn');
+        calendarAuthBtn.addEventListener('click', function() {
+            console.log('[DEBUG] Calendar auth button clicked');
+            authenticateCalendar();
+        });
+    } else {
+        console.error('[ERROR] Calendar auth button not found');
     }
 }
 
@@ -486,12 +503,22 @@ async function sendQuestion() {
     
     // Đánh dấu tin nhắn đang xử lý
     pendingMessages.set(messageId, { question, userMessageId, botMessageId });
-    
-    try {
-        const response = await fetch('/chat', {
+      try {
+        // Check if this is a calendar request and calendar is available
+        const isCalendarRequest = hasCalendarIntent(question);
+        let endpoint = '/chat';
+          if (isCalendarRequest && calendarStatus.authenticated && calendarStatus.status === 'ready') {
+            console.log('[DEBUG] Detected calendar request, using calendar endpoint');
+            endpoint = '/calendar/process';
+        }
+        
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question: question }),
+            body: JSON.stringify({ 
+                question: question,
+                user_id: getCurrentUserId()
+            }),
             credentials: 'same-origin'
         });
         
@@ -505,10 +532,9 @@ async function sendQuestion() {
         
         // Remove từ pending
         pendingMessages.delete(messageId);
-        
-        if (response.ok) {
+          if (response.ok) {
             // Replace typing indicator với response thực tế
-            replaceMessage(botMessageId, data.answer, 'bot');
+            replaceMessage(botMessageId, data.answer || data.response || data.message, 'bot');
             
             // Update suggestions
             updateSuggestions(data.suggestions || []);
@@ -518,6 +544,21 @@ async function sendQuestion() {
                 updateAIModeIndicator(data.ai_mode);
             }
             
+            // Handle calendar-specific responses
+            if (data.calendar_action) {
+                console.log('[DEBUG] Calendar action performed:', data.calendar_action);
+                if (data.calendar_action === 'event_created') {
+                    showMessage('✅ Sự kiện đã được tạo thành công trong Google Calendar!', 'success');
+                }
+            }
+            
+            // If calendar request but not authenticated, show auth prompt
+            if (isCalendarRequest && (!calendarStatus.authenticated || calendarStatus.status !== 'ready')) {
+                setTimeout(() => {
+                    showMessage('📅 Để sử dụng tính năng lịch, vui lòng kết nối Google Calendar trước.', 'info');
+                }, 1000);
+            }
+            
             // Chỉ cập nhật conversation list mà KHÔNG reload messages
             // để cập nhật metadata như message count
             setTimeout(() => {
@@ -525,7 +566,7 @@ async function sendQuestion() {
             }, 500);
             
         } else {
-            replaceMessage(botMessageId, '❌ Lỗi: ' + data.error, 'bot');
+            replaceMessage(botMessageId, '❌ Lỗi: ' + (data.error || data.message || 'Unknown error'), 'bot');
         }
         
     } catch (error) {
@@ -792,4 +833,234 @@ function escapeHtml(unsafe) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+// ====== CALENDAR INTEGRATION ======
+let calendarStatus = {
+    authenticated: false,
+    status: 'checking',
+    message: 'Đang kiểm tra kết nối...'
+};
+
+// Check calendar authentication status
+async function checkCalendarStatus() {
+    try {
+        console.log('[DEBUG] Checking calendar status...');
+        const userId = getCurrentUserId();
+        const response = await fetch(`/calendar/auth/status?user_id=${encodeURIComponent(userId)}`, {
+            credentials: 'same-origin'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            calendarStatus = data;
+            updateCalendarUI();
+            console.log('[DEBUG] Calendar status:', data);
+        } else {
+            calendarStatus = {
+                authenticated: false,
+                status: 'error',
+                message: 'Lỗi kiểm tra trạng thái lịch'
+            };
+            updateCalendarUI();
+        }
+    } catch (error) {
+        console.error('[ERROR] Calendar status check failed:', error);
+        calendarStatus = {
+            authenticated: false,
+            status: 'error',
+            message: 'Không thể kết nối với dịch vụ lịch'
+        };
+        updateCalendarUI();
+    }
+}
+
+// Update calendar UI based on status
+function updateCalendarUI() {
+    const statusElement = document.getElementById('calendarStatus');
+    const statusText = document.getElementById('calendarStatusText');
+    const authBtn = document.getElementById('calendarAuthBtn');
+    
+    if (!statusElement || !statusText || !authBtn) return;
+    
+    // Remove all status classes
+    statusElement.classList.remove('connected', 'disconnected', 'checking');
+    
+    if (calendarStatus.authenticated && calendarStatus.status === 'ready') {
+        statusElement.classList.add('connected');
+        statusText.textContent = '📅 Lịch đã kết nối';
+        authBtn.style.display = 'none';
+    } else if (calendarStatus.status === 'need_auth') {
+        statusElement.classList.add('disconnected');
+        statusText.textContent = '📅 Chưa kết nối lịch';
+        authBtn.style.display = 'inline-block';
+        authBtn.textContent = 'Kết nối Google Calendar';
+        authBtn.disabled = false;
+    } else if (calendarStatus.status === 'need_refresh') {
+        statusElement.classList.add('disconnected');
+        statusText.textContent = '📅 Cần làm mới kết nối';
+        authBtn.style.display = 'inline-block';
+        authBtn.textContent = 'Làm mới kết nối';
+        authBtn.disabled = false;
+    } else if (calendarStatus.status === 'checking') {
+        statusElement.classList.add('checking');
+        statusText.textContent = '📅 Đang kiểm tra...';
+        authBtn.style.display = 'none';
+    } else {
+        statusElement.classList.add('disconnected');
+        statusText.textContent = '📅 Lỗi kết nối lịch';
+        authBtn.style.display = 'inline-block';
+        authBtn.textContent = 'Thử lại';
+        authBtn.disabled = false;
+    }
+    
+    // Update calendar suggestions
+    updateCalendarSuggestions();
+}
+
+// Handle calendar authentication
+async function authenticateCalendar() {
+    try {
+        console.log('[DEBUG] Starting calendar authentication...');
+        const authBtn = document.getElementById('calendarAuthBtn');
+        if (authBtn) {
+            authBtn.disabled = true;
+            authBtn.textContent = 'Đang xử lý...';
+        }
+        
+        const response = await fetch('/calendar/auth/url', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                user_id: getCurrentUserId()
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.auth_url) {
+                // Open auth URL in new tab
+                window.open(data.auth_url, '_blank');
+                
+                // Show message to user
+                showMessage('🔗 Đã mở tab mới để xác thực Google Calendar. Sau khi hoàn tất, hãy quay lại đây.', 'info');
+                
+                // Start polling for auth completion
+                startAuthPolling();
+            } else {
+                showMessage('❌ ' + (data.message || 'Không thể tạo link xác thực'), 'error');
+            }
+        } else {
+            showMessage('❌ Lỗi kết nối với server', 'error');
+        }
+    } catch (error) {
+        console.error('[ERROR] Calendar authentication failed:', error);
+        showMessage('❌ Lỗi xác thực: ' + error.message, 'error');
+    } finally {
+        const authBtn = document.getElementById('calendarAuthBtn');
+        if (authBtn) {
+            authBtn.disabled = false;
+            updateCalendarUI();
+        }
+    }
+}
+
+// Poll for authentication completion
+function startAuthPolling() {
+    const pollInterval = setInterval(async () => {
+        await checkCalendarStatus();
+        
+        if (calendarStatus.authenticated && calendarStatus.status === 'ready') {
+            clearInterval(pollInterval);
+            showMessage('✅ Google Calendar đã được kết nối thành công!', 'success');
+        }
+    }, 3000); // Check every 3 seconds
+    
+    // Stop polling after 5 minutes
+    setTimeout(() => {
+        clearInterval(pollInterval);
+    }, 300000);
+}
+
+// Get current user ID (simple implementation)
+function getCurrentUserId() {
+    let userId = localStorage.getItem('chatbot_user_id');
+    if (!userId) {
+        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('chatbot_user_id', userId);
+    }
+    return userId;
+}
+
+// Check if message contains calendar intent
+function hasCalendarIntent(message) {
+    const calendarKeywords = [
+        'lịch', 'calendar', 'hẹn', 'cuộc họp', 'meeting', 'deadline',
+        'nhắc nhở', 'remind', 'thời gian biểu', 'schedule', 'kế hoạch',
+        'plan', 'sự kiện', 'event', 'tạo lịch', 'đặt lịch', 'book',
+        'ngày mai', 'tuần sau', 'tháng sau', 'tomorrow', 'next week',
+        'next month', 'hôm nay', 'today', 'ngày', 'giờ', 'phút'
+    ];
+    
+    const lowerMessage = message.toLowerCase();
+    return calendarKeywords.some(keyword => lowerMessage.includes(keyword));
+}
+
+// Update calendar suggestions based on authentication status
+function updateCalendarSuggestions() {
+    const calendarSuggestions = document.querySelectorAll('.calendar-suggestion');
+    
+    calendarSuggestions.forEach(suggestion => {
+        if (calendarStatus.authenticated && calendarStatus.status === 'ready') {
+            suggestion.classList.remove('disabled');
+            suggestion.style.pointerEvents = 'auto';
+            suggestion.setAttribute('title', 'Click để thử tính năng lịch');
+        } else {
+            suggestion.classList.add('disabled');
+            suggestion.style.pointerEvents = 'none';
+            suggestion.setAttribute('title', 'Cần kết nối Google Calendar để sử dụng');
+        }
+    });
+}
+
+// Handle OAuth callback (if opened in same window)
+function handleOAuthCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    
+    if (code && state) {
+        console.log('[DEBUG] OAuth callback detected');
+        
+        // Send the authorization code to backend
+        fetch('/calendar/auth/callback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                code: code,
+                user_id: state
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showMessage('✅ Google Calendar đã được kết nối thành công!', 'success');
+                checkCalendarStatus();
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                showMessage('❌ Lỗi kết nối: ' + (data.message || 'Unknown error'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('[ERROR] OAuth callback failed:', error);
+            showMessage('❌ Lỗi xử lý callback: ' + error.message, 'error');
+        });
+    }
 }

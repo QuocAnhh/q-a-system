@@ -1,9 +1,8 @@
-
 import re
 import requests
 from datetime import datetime
 from config import Config
-from session_manager import get_user_data, save_user_data
+from db_session_manager import get_user_data, save_user_data
 
 
 def handle_deadline_commands(question, user_data):
