@@ -253,7 +253,7 @@ Lưu ý:
                 except ValueError:
                     pass
             
-            # Check for day names (thứ hai, tuesday, etc.)
+            # Check for day names (thứ hai, thứ ba,...)
             day_mapping = {
                 'chủ nhật': 6, 'sunday': 6,
                 'thứ hai': 0, 'monday': 0,
@@ -272,7 +272,7 @@ Lưu ý:
                     target_date = today + timedelta(days=days_ahead)
                     return target_date.strftime('%Y-%m-%d')
             
-            # Default to tomorrow
+            # mặc định là ngày mai nếu không tìm thấy ngày cụ thể
             return (today + timedelta(days=1)).strftime('%Y-%m-%d')
             
         except Exception:

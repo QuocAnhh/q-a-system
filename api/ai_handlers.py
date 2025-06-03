@@ -83,17 +83,14 @@ def handle_ai_question(question):
     if any(keyword in q for keyword in ['thời gian', 'kế hoạch', 'lịch trình', 'quản lý']):
         return handle_time_management_questions(question)
 
-    # NEW: Đại số tuyến tính
     if any(keyword in q for keyword in ['đại số tuyến tính', 'linear algebra', 'ma trận', 'matrix', 'vector', 'không gian vector', 'hệ phương trình tuyến tính']):
         print(f"[DEBUG] Detected linear algebra keywords, routing to handle_linear_algebra_questions")
         return handle_linear_algebra_questions(question)
 
-    # NEW: Xác suất thống kê
     if any(keyword in q for keyword in ['xác suất thống kê', 'probability', 'statistics', 'phân phối', 'distribution', 'kiểm định giả thuyết', 'hypothesis testing', 'hồi quy']):
         print(f"[DEBUG] Detected probability statistics keywords, routing to handle_probability_statistics_questions")
         return handle_probability_statistics_questions(question)
 
-    # NEW: Giải tích
     if any(keyword in q for keyword in ['giải tích', 'calculus', 'vi phân', 'differential', 'tích phân', 'integral', 'đạo hàm', 'derivative', 'giới hạn', 'limit']):
         print(f"[DEBUG] Detected calculus keywords, routing to handle_calculus_questions")
         return handle_calculus_questions(question)

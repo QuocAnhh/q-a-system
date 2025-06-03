@@ -64,7 +64,7 @@ class DatabaseManager:
                 )
             """)
             
-            # đánh chỉ mục để speed up truy vấn
+            # đánh index để speed up truy vấn
             conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations (user_id)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations (updated_at)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages (conversation_id)")
@@ -139,7 +139,7 @@ class DatabaseManager:
             ).fetchone()
             active_conv_id = active_conv['id'] if active_conv else None
             
-            # Get all conversations
+            # lấy tất cả conversations
             conversations = conn.execute(
                 """SELECT * FROM conversations 
                    WHERE user_id = ? 
@@ -372,12 +372,12 @@ class DatabaseManager:
     def export_all_data(self, user_id: str) -> Dict:
         """Export all user data for debugging/backup"""
         with self.get_connection() as conn:
-            # Get user info
+            # lấy user info
             user = conn.execute(
                 "SELECT * FROM users WHERE id = ?", (user_id,)
             ).fetchone()
             
-            # Get all conversations with messages
+            # lấy tất cả conversations với messages
             conversations = []
             conv_rows = conn.execute(
                 "SELECT * FROM conversations WHERE user_id = ? ORDER BY updated_at DESC",

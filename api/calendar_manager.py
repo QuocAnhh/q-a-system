@@ -5,7 +5,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict
 import logging
 from config import Config
 
@@ -166,16 +166,59 @@ class GoogleCalendarManager:
             self.logger.error(f"Error building calendar service: {e}")
             return False
     
+    def is_time_conflict(self, user_id: str, start_time: datetime, end_time: datetime) -> bool:
+        """Kiểm tra có sự kiện nào trùng thời gian không (phát hiện mọi trường hợp overlap)"""
+        if not self.authenticate_user(user_id):
+            return False
+        events_result = self.service.events().list(
+            calendarId='primary',
+            timeMin=(start_time - timedelta(days=1)).isoformat() + 'Z',  # buffer to ensure all-day events are included
+            timeMax=(end_time + timedelta(days=1)).isoformat() + 'Z',
+            singleEvents=True,
+            orderBy='startTime',
+            maxResults=100
+        ).execute()
+        events = events_result.get('items', [])
+        for event in events:
+            # Skip cancelled events
+            if event.get('status') == 'cancelled':
+                continue
+            # Parse event start/end
+            ev_start = event['start'].get('dateTime') or event['start'].get('date')
+            ev_end = event['end'].get('dateTime') or event['end'].get('date')
+            # Convert to datetime
+            try:
+                if 'T' in ev_start:
+                    ev_start_dt = datetime.fromisoformat(ev_start.replace('Z', '+00:00'))
+                else:
+                    ev_start_dt = datetime.fromisoformat(ev_start)
+                if 'T' in ev_end:
+                    ev_end_dt = datetime.fromisoformat(ev_end.replace('Z', '+00:00'))
+                else:
+                    ev_end_dt = datetime.fromisoformat(ev_end)
+            except Exception:
+                continue
+            # Check overlap: (A < D) and (B > C)
+            if ev_start_dt < end_time and ev_end_dt > start_time:
+                return True
+        return False
+
     def create_event(self, user_id: str, title: str, start_time: datetime, end_time: datetime, 
                     description: str = "", location: str = "") -> Dict:
-        """Create a calendar event"""
+        """Create a calendar event (có kiểm tra trùng lịch)"""
         try:
             if not self.authenticate_user(user_id):
                 return {
                     'success': False,
                     'message': 'Cần xác thực Google Calendar trước khi tạo sự kiện'
                 }
-            
+            # Kiểm tra trùng lịch
+            if self.is_time_conflict(user_id, start_time, end_time):
+                return {
+                    'success': False,
+                    'message': '❗ Thời gian này đã có sự kiện khác trong lịch. Vui lòng chọn thời gian khác!',
+                    'conflict': True
+                }
             event = {
                 'summary': title,
                 'location': location,
@@ -218,80 +261,6 @@ class GoogleCalendarManager:
                 'message': f'Lỗi tạo sự kiện: {str(e)}'
             }
     
-    def create_deadline_event(self, user_id: str, title: str, deadline_time: datetime, 
-                            description: str = "") -> Dict:
-        """Create a deadline event (all-day or specific time)"""
-        try:
-            if not self.authenticate_user(user_id):
-                return {
-                    'success': False,
-                    'message': 'Cần xác thực Google Calendar trước khi tạo deadline'
-                }
-            
-            # Check if it's all-day deadline (no specific time)
-            if deadline_time.hour == 0 and deadline_time.minute == 0:
-                # All-day event
-                event = {
-                    'summary': f"📅 DEADLINE: {title}",
-                    'description': f"Deadline: {description}",
-                    'start': {
-                        'date': deadline_time.date().isoformat(),
-                        'timeZone': 'Asia/Ho_Chi_Minh',
-                    },
-                    'end': {
-                        'date': deadline_time.date().isoformat(),
-                        'timeZone': 'Asia/Ho_Chi_Minh',
-                    },
-                    'reminders': {
-                        'useDefault': False,
-                        'overrides': [
-                            {'method': 'email', 'minutes': 24 * 60},      # 1 day
-                            {'method': 'email', 'minutes': 3 * 24 * 60},  # 3 days
-                        ],
-                    },
-                }
-            else:
-                # Specific time deadline
-                event = {
-                    'summary': f"⏰ DEADLINE: {title}",
-                    'description': f"Deadline: {description}",
-                    'start': {
-                        'dateTime': deadline_time.isoformat(),
-                        'timeZone': 'Asia/Ho_Chi_Minh',
-                    },
-                    'end': {
-                        'dateTime': (deadline_time + timedelta(hours=1)).isoformat(),
-                        'timeZone': 'Asia/Ho_Chi_Minh',
-                    },
-                    'reminders': {
-                        'useDefault': False,
-                        'overrides': [
-                            {'method': 'email', 'minutes': 24 * 60},
-                            {'method': 'popup', 'minutes': 60},
-                        ],
-                    },
-                }
-            
-            created_event = self.service.events().insert(
-                calendarId='primary', body=event).execute()
-            
-            self.logger.info(f"Created deadline {created_event['id']} for user {user_id}")
-            
-            return {
-                'success': True,
-                'event_id': created_event['id'],
-                'event_link': created_event.get('htmlLink'),
-                'message': f'Đã tạo deadline: {title}',
-                'deadline_time': deadline_time.isoformat()
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error creating deadline: {e}")
-            return {
-                'success': False,
-                'message': f'Lỗi tạo deadline: {str(e)}'
-            }
-    
     def get_upcoming_events(self, user_id: str, days_ahead: int = 7) -> Dict:
         """Lấy danh sách sự kiện sắp tới"""
         try:
@@ -329,37 +298,5 @@ class GoogleCalendarManager:
                 'message': f'Lỗi lấy danh sách sự kiện: {str(e)}'
             }
     
-    def monitor_quota_usage(self) -> Dict:
-        """Monitor Google Calendar API quota usage"""
-        try:
-            if not self.service:
-                return {
-                    'quota_status': 'not_authenticated',
-                    'message': 'Chưa xác thực'
-                }
-            
-            # Tạo một request đơn giản để check quota
-            calendar_list = self.service.calendarList().list(maxResults=1).execute()
-            
-            self.logger.info(f"Calendar API call successful at {datetime.now()}")
-            
-            return {
-                'quota_status': 'healthy',
-                'timestamp': datetime.now().isoformat(),
-                'message': 'API hoạt động bình thường'
-            }
-            
-        except Exception as e:
-            if 'quotaExceeded' in str(e):
-                return {
-                    'quota_status': 'exceeded',
-                    'message': 'Đã vượt quota API, vui lòng thử lại sau'
-                }
-            else:
-                return {
-                    'quota_status': 'error',
-                    'message': f'Lỗi API: {str(e)}'
-                }
-
 # Global instance
 calendar_manager = GoogleCalendarManager()

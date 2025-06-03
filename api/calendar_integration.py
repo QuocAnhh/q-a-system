@@ -6,12 +6,12 @@ from calendar_ai_parser import CalendarAIParser
 from db_session_manager import add_message_to_conversation, get_current_conversation
 import logging
 
-#logging
+#xuất log
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class CalendarIntegration:
-    """Main calendar integration class that handles all calendar operations"""
+    """class tích hợp chức năng lịch"""
     
     def __init__(self):
         self.calendar_manager = GoogleCalendarManager()
@@ -19,9 +19,8 @@ class CalendarIntegration:
         
     def process_calendar_request(self, user_id: str, user_message: str) -> Dict[str, Any]:
 
-        
         try:
-            # Parse the user message
+            # phân tích yêu cầu của người dùng
             parsed_request = self.ai_parser.parse_calendar_request(user_message)
             parsed_request['raw_message'] = user_message
             
@@ -56,6 +55,8 @@ class CalendarIntegration:
                 return self._handle_list_events(user_id, parsed_request)
             elif action == 'delete_event':
                 return self._handle_delete_event(user_id, parsed_request)
+            elif action == 'update_event':
+                return self._handle_update_event(user_id, parsed_request)
             else:
                 return {
                     'success': False,
@@ -77,7 +78,7 @@ class CalendarIntegration:
         """Handle creating a new event"""
         
         try:
-            # Validate required fields
+            # xác thực các trường bắt buộc
             if not parsed_request.get('title'):
                 return {
                     'success': False,
@@ -94,7 +95,7 @@ class CalendarIntegration:
                     'action': 'validation_error'
                 }
             
-            # Parse start_time and end_time
+            # Xử lý ngày và giờ
             date_str = parsed_request['date']
             time_str = parsed_request.get('time', '09:00')
             duration = parsed_request.get('duration', 60)
@@ -125,7 +126,7 @@ class CalendarIntegration:
                 if parsed_request.get('reminder', 15) > 0:
                     message += f"\n🔔 Nhắc nhở trước {parsed_request.get('reminder', 15)} phút"
                 
-                # Save to conversation
+                # lưu vào hội thoại
                 add_message_to_conversation(parsed_request.get('raw_message', ''), message, ai_mode='calendar', metadata={'calendar_action': 'create_event'})
                 conversation = get_current_conversation()
                 
@@ -167,7 +168,7 @@ class CalendarIntegration:
         """Handle creating a deadline (all-day event)"""
         
         try:
-            # Validate required fields
+            # xác thực các trường bắt buộc
             if not parsed_request.get('title'):
                 return {
                     'success': False,
@@ -202,8 +203,8 @@ class CalendarIntegration:
                 if parsed_request.get('reminder', 60) > 0:
                     reminder_text = self._format_reminder_time(parsed_request.get('reminder', 60))
                     message += f"\n🔔 Nhắc nhở trước {reminder_text}"
-                
-                # Save to conversation
+
+                # lưu vào hội thoại
                 add_message_to_conversation(parsed_request.get('raw_message', ''), message, ai_mode='calendar', metadata={'calendar_action': 'create_deadline'})
                 conversation = get_current_conversation()
                 
@@ -257,16 +258,22 @@ class CalendarIntegration:
                 # Format events list
                 message = f"📅 Lịch của bạn trong {days_ahead} ngày tới:\n\n"
                 
-                for i, event in enumerate(events[:10], 1):  # Limit to 10 events
-                    start_time = event.get('start_time', 'Không xác định')
-                    title = event.get('title', 'Không có tiêu đề')
-                    
-                    # Format datetime
+                for i, event in enumerate(events[:10], 1):  # limit  10 events
+                    # Lấy tiêu đề
+                    title = event.get('summary', 'Không có tiêu đề')
+                    # Lấy thời gian bắt đầu
+                    start_info = event.get('start', {})
+                    start_time = start_info.get('dateTime') or start_info.get('date') or 'Không xác định'
+                    # Định dạng thời gian
                     if start_time != 'Không xác định':
                         try:
-                            dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-                            formatted_time = dt.strftime('%d/%m/%Y %H:%M')
-                        except:
+                            if 'T' in start_time:
+                                dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+                                formatted_time = dt.strftime('%d/%m/%Y %H:%M')
+                            else:
+                                dt = datetime.fromisoformat(start_time)
+                                formatted_time = dt.strftime('%d/%m/%Y (cả ngày)')
+                        except Exception:
                             formatted_time = start_time
                     else:
                         formatted_time = start_time
@@ -274,8 +281,10 @@ class CalendarIntegration:
                     message += f"{i}. **{title}**\n"
                     message += f"   📅 {formatted_time}\n"
                     
-                    if event.get('description'):
-                        desc = event['description'][:100] + ('...' if len(event['description']) > 100 else '')
+                    # Mô tả
+                    desc = event.get('description')
+                    if desc:
+                        desc = desc[:100] + ('...' if len(desc) > 100 else '')
                         message += f"   📝 {desc}\n"
                     
                     message += "\n"
@@ -295,7 +304,7 @@ class CalendarIntegration:
             else:
                 return {
                     'success': False,
-                    'message': f"Không thể lấy danh sách sự kiện: {result['error']}",
+                    'message': f"Không thể lấy danh sách sự kiện: {result.get('message', 'Lỗi không xác định')}",
                     'data': None,
                     'action': 'list_events_failed'
                 }
@@ -430,3 +439,24 @@ class CalendarIntegration:
                 return f"{days} ngày"
             else:
                 return f"{days} ngày {remaining_hours} giờ"
+    
+    def _get_last_event_id_from_conversation(self, user_id: str) -> Optional[str]:
+        """Tìm event_id gần nhất từ hội thoại hiện tại (dựa vào metadata message)"""
+        conversation = get_current_conversation()
+        if not conversation or not conversation.get('messages'):
+            return None
+        # Duyệt ngược để tìm event_id gần nhất
+        for msg in reversed(conversation['messages']):
+            meta = msg.get('metadata') or {}
+            if meta.get('calendar_action') in ['create_event', 'create_deadline'] and meta.get('event_id'):
+                return meta['event_id']
+        return None
+
+    def _handle_update_event(self, user_id: str, parsed_request: Dict) -> Dict[str, Any]:
+        """Tạm thời không hỗ trợ cập nhật sự kiện."""
+        return {
+            'success': False,
+            'message': 'Chức năng cập nhật sự kiện chưa được hỗ trợ.',
+            'data': None,
+            'action': 'not_implemented'
+        }
