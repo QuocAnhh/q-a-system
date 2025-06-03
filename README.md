@@ -93,7 +93,7 @@ GOOGLE_CALENDAR_REDIRECT_URI=http://localhost:5000/calendar/oauth2callback
 5. **Initialize database**
 Database SQLite sẽ được tạo tự động khi chạy lần đầu.
 
-## 🚀 Running the Application
+## Running the Application
 
 ```bash
 cd api
@@ -102,7 +102,7 @@ python main.py
 
 Ứng dụng sẽ chạy tại `http://localhost:5000`
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### Core Chat
 - `POST /chat` - Gửi tin nhắn và nhận phản hồi AI
@@ -129,7 +129,7 @@ python main.py
 - `GET /health` - Kiểm tra trạng thái hệ thống
 - `GET /` - Trả về giao diện frontend
 
-## 🤖 AI Capabilities
+## AI Capabilities
 
 ### Supported Subjects
 - **Mathematics**: Đại số, giải tích, xác suất thống kê, giải bài tập
@@ -186,9 +186,6 @@ AI có thể hiểu và xử lý các yêu cầu về lịch như:
 4. Push lên branch (`git push origin feature/ten-tinh-nang`)
 5. Tạo Pull Request
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Acknowledgments
 
