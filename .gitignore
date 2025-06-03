@@ -4,4 +4,4 @@ __pycache__/
 .env.*
 data/calendar_tokens/
 data/credentials.json
- 
+data/chatbot.db
