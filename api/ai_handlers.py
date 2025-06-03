@@ -17,37 +17,7 @@ def _get_task_type_from_subject(subject):
         return "general"
 
 
-def call_openai_api(question, system_prompt, subject):
-    """Gọi OpenAI API với prompt đơn giản và tập trung - compatibility wrapper"""
-    try:
-        print(f"[DEBUG] call_openai_api called for subject: {subject}")
-        print(f"[DEBUG] Question: {question}")
-        
-        # Đơn giản hóa system prompt - chỉ tập trung vào câu hỏi hiện tại
-        focused_prompt = f"""{system_prompt}
 
-NHIỆM VỤ: Trả lời trực tiếp câu hỏi "{question}" một cách chính xác và chi tiết.
-Sử dụng HTML formatting để câu trả lời đẹp mắt."""
-        
-        # Xác định task type dựa trên subject
-        task_type = _get_task_type_from_subject(subject)
-        
-        print(f"[DEBUG] Using task type: {task_type}")
-        
-        # Sử dụng OpenAI manager mới
-        answer = get_smart_response(
-            prompt=question,
-            system_prompt=focused_prompt,
-            task_type=task_type,
-            temperature=0.3  # Giảm temperature để có câu trả lời tập trung hơn
-        )
-        
-        print(f"[DEBUG] OpenAI response received: {answer[:100]}...")
-        
-        return answer
-    except Exception as e:
-        print(f"[ERROR] OpenAI API Error: {e}")
-        return f"Hiện tại có lỗi kết nối với AI. Vui lòng thử lại sau. Chi tiết lỗi: {str(e)}"
 
 
 def handle_ai_question(question):
@@ -808,65 +778,4 @@ def _format_response_with_fallback(result, ai_mode, suggestions):
 
 
 # Study Tools Functions (for future expansion)
-def generate_flashcards_from_content(content, subject="general"):
-    """Tạo flashcards từ nội dung văn bản"""
-    try:
-        prompt = f"""Tạo 5-10 flashcards từ nội dung sau:
 
-{content}
-
-Format: 
-**Câu hỏi:** [câu hỏi]
-**Đáp án:** [đáp án ngắn gọn]
-
-Tập trung vào các khái niệm quan trọng và dễ nhớ."""
-        
-        response = get_smart_response(
-            prompt=prompt,
-            task_type="study_tools",
-            temperature=0.3
-        )
-        
-        return {
-            "flashcards": response,
-            "success": True,
-            "count": response.count("**Câu hỏi:**")
-        }
-    except Exception as e:
-        return {
-            "flashcards": f"Lỗi tạo flashcards: {str(e)}",
-            "success": False,
-            "count": 0
-        }
-
-
-def generate_exam_questions(content, question_count=10, difficulty="medium"):
-    """Tạo câu hỏi thi từ nội dung"""
-    try:
-        prompt = f"""Tạo {question_count} câu hỏi thi {difficulty} từ nội dung sau:
-
-{content}
-
-Bao gồm:
-- 50% câu hỏi trắc nghiệm (4 đáp án A, B, C, D)
-- 30% câu hỏi tự luận ngắn
-- 20% câu hỏi phân tích/thảo luận
-
-Format rõ ràng với đáp án."""
-        
-        response = get_smart_response(
-            prompt=prompt,
-            task_type="study_tools",
-            temperature=0.4
-        )
-        
-        return {
-            "exam_questions": response,
-            "success": True,
-            "difficulty": difficulty
-        }
-    except Exception as e:
-        return {
-            "exam_questions": f"Lỗi tạo đề thi: {str(e)}",
-            "success": False
-        }

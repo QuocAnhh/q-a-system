@@ -331,28 +331,4 @@ def get_smart_response(
     return get_ai_response(messages, task_type, **kwargs)
 
 
-def get_study_tools_response(
-    prompt: str,
-    document_content: str = "",
-    task_type: str = "study_tools",
-    **kwargs
-) -> str:
-    """
-    Specialized function cho study tools
-    """
-    system_prompt = """Bạn là một AI chuyên gia về giáo dục và tạo nội dung học tập.
-    Nhiệm vụ của bạn là phân tích tài liệu và tạo ra các công cụ học tập hiệu quả như:
-    - Flashcards (thẻ ghi nhớ)
-    - Câu hỏi trắc nghiệm
-    - Câu hỏi tự luận
-    - Đề thi mẫu
-    - Tóm tắt nội dung
-    
-    Luôn tạo nội dung chất lượng cao, phù hợp với trình độ và mục tiêu học tập."""
-    
-    if document_content:
-        full_prompt = f"Tài liệu để phân tích:\n{document_content}\n\nYêu cầu: {prompt}"
-    else:
-        full_prompt = prompt
-    
-    return get_smart_response(full_prompt, system_prompt, task_type, **kwargs)
+
