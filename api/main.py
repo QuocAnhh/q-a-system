@@ -6,17 +6,11 @@ import json
 
 from config import Config
 from database import get_db
-from ai_handlers import handle_ai_question, handle_ai_question_with_context
+from ai_handlers import handle_ai_question_with_context
 from utils import handle_deadline_commands, handle_calendar_commands, handle_document_search
-from db_session_manager import export_to_html
+from db_session_manager import export_to_html, get_user_id, get_user_data, save_user_data
 
 
-# hàm quản lý các phiên
-def get_user_id():
-    """Get or create user ID from session"""
-    if 'user_id' not in session:
-        session['user_id'] = f"user_{datetime.now().timestamp()}"
-    return session['user_id']
 
 def get_conversation_history():
     """Get conversation history"""
@@ -68,21 +62,6 @@ def add_message_to_conversation(question, answer, ai_mode=None, metadata=None):
 
 # Local export function was removed and replaced with imported function from db_session_manager
 
-def get_user_data():
-    """Get user's preferences, deadlines, schedule"""
-    try:
-        db = get_db()
-        user_id = get_user_id()
-        return db.get_user_data(user_id)
-    except Exception as e:
-        print(f"[ERROR] get_user_data failed: {e}")
-        return {'preferences': {}, 'deadlines': {}, 'schedule': {}}
-
-def save_user_data(data):
-    """Save user's preferences, deadlines, schedule"""
-    db = get_db()
-    user_id = get_user_id()
-    return db.update_user_data(user_id, data)
 
 app = Flask(__name__)
 CORS(app)
@@ -274,7 +253,8 @@ def delete_conversation(conversation_id):
             'conversations': conversations,
             'timestamp': datetime.now().isoformat()
         })
-    except Exception as e:        return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route("/export-chat", methods=["GET"])
@@ -352,10 +332,6 @@ def process_question_with_context(question, context_messages=None):
     print(f"[DEBUG] Routing to AI handler with context")
     return handle_ai_question_with_context(question, context_messages)
 
-
-def process_question(question):
-    """Xử lý câu hỏi từ người dùng (compatibility function)"""
-    return process_question_with_context(question, None)
 
 
 # ==================== CALENDAR INTEGRATION ENDPOINTS ====================

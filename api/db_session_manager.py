@@ -11,12 +11,6 @@ def get_user_id():
     return session['user_id']
 
 
-def get_actual_user_id():
-    """Get actual user ID from database (ensures user exists)"""
-    db = get_db()
-    session_user_id = get_user_id()
-    return db.get_or_create_user(session_user_id)
-
 
 def get_user_data() -> Dict:
     """Get user data (preferences, deadlines, schedule) - compatible with old interface"""
